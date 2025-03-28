@@ -1,2 +1,4 @@
 # apollo
- Resource format for LUNA game library.
+ Resource format for [LUNA](https://github.com/ahstenzel/luna) game library.
+
+ 

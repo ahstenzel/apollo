@@ -1,0 +1,4 @@
+#define Q_OBJECT
+#define Q_DISABLE_COPY_MOVE
+#define slots
+#define signals
