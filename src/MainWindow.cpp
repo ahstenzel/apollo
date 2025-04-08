@@ -93,7 +93,7 @@ void MainWindow::onMenu_File_OpenProject() {
 		return;
 	}
 	if (!m_projectWidget_Main->load(filename)) {
-		QMessageBox::critical(this, "Error", QString("Failed to load project file!\n%1").arg(m_projectWidget_Main->getErrorMessage()));
+		QMessageBox::critical(this, "Error", QString("Failed to load project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
 }
 
@@ -107,7 +107,7 @@ void MainWindow::onMenu_File_SaveProject() {
 		}
 	}
 	if (!m_projectWidget_Main->save(filename)) {
-		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n%1").arg(m_projectWidget_Main->getErrorMessage()));
+		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
 	m_saveFlag = true;
 }
@@ -119,13 +119,26 @@ void MainWindow::onMenu_File_SaveAsProject() {
 		return;
 	}
 	if (!m_projectWidget_Main->save(filename)) {
-		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n%1").arg(m_projectWidget_Main->getErrorMessage()));
+		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
 	m_saveFlag = true;
 }
 
 void MainWindow::onMenu_File_ExportProject() {
-	
+	// Check if the user wants to save the current project
+	auto reply = confirmSave();
+	if (reply == QMessageBox::Cancel) {
+		return;
+	}
+
+	// Export project
+	QString filename = QFileDialog::getSaveFileName(this, tr("Export Resource File As"), ".", "*.arc");
+	if (filename.isEmpty()) {
+		return;
+	}
+	if (!m_projectWidget_Main->generate(filename)) {
+		QMessageBox::critical(this, "Error", QString("Failed to export resource file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
+	}
 }
 
 void MainWindow::onMenu_Help_About() {

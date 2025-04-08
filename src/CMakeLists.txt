@@ -33,6 +33,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(APP_SOURCE
 	Main.cpp
+	Common.cpp
 	MainWindow.cpp
 	ProjectWidget.cpp
 	AssetInfo.cpp
@@ -40,6 +41,8 @@ set(APP_SOURCE
 	BrowseLineEdit.cpp
 	ImageLabel.cpp
 	TextureGroupInfo.cpp
+	TextureGroupBuilder.cpp
+	ResourceGenerator.cpp
 	Resources.cpp
 )
 set(APP_HEADER
@@ -51,6 +54,8 @@ set(APP_HEADER
 	BrowseLineEdit.hpp
 	ImageLabel.hpp
 	TextureGroupInfo.hpp
+	TextureGroupBuilder.hpp
+	ResourceGenerator.hpp
 )
 qt_add_executable(apollo ${APP_SOURCE} ${APP_HEADER})
 source_group("Header Files" FILES ${APP_HEADER})

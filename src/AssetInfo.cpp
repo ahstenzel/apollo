@@ -8,59 +8,17 @@
 const QChar g_assetDelim = '#';
 const QString g_rootAssetName = "(root)";
 
-QString ImageFormatString(QImage::Format format) {
-	switch (format) {
-	case QImage::Format_Mono: return "Mono (MSB)"; break;
-	case QImage::Format_MonoLSB: return "Mono (LSB)"; break;
-	case QImage::Format_Indexed8: return "Indexed (8-bit)"; break;
-	case QImage::Format_RGB32: return "32-bit RGB"; break;
-	case QImage::Format_ARGB32: return "32-bit ARGB"; break;
-	case QImage::Format_ARGB32_Premultiplied: return "32-bit ARGB (Premultiplied)"; break;
-	case QImage::Format_RGB16: return "16-bit RGB (5-6-5)"; break;
-	case QImage::Format_ARGB8565_Premultiplied: return "24-bit ARGB (Premultiplied) (8-5-6-5)"; break;
-	case QImage::Format_RGB666: return "24-bit RGB (6-6-6)"; break;
-	case QImage::Format_ARGB6666_Premultiplied: return "24-bit ARGB (Premultiplied) (6-6-6-6)"; break;
-	case QImage::Format_RGB555: return "16-bit RGB (5-5-5)"; break;
-	case QImage::Format_ARGB8555_Premultiplied: return "24-bit ARGB (Premultiplied) (8-5-5-5)"; break;
-	case QImage::Format_RGB888: return "24-bit RGB (8-8-8)"; break;
-	case QImage::Format_RGB444: return "16-bit RGB (4-4-4)"; break;
-	case QImage::Format_ARGB4444_Premultiplied: return "16-bit ARGB (Premultiplied) (4-4-4-4)"; break;
-	case QImage::Format_RGBX8888: return "32-bit byte-ordered RGB(x) (4-4-4-x)"; break;
-	case QImage::Format_RGBA8888: return "32-bit byte-ordered RGBA (4-4-4-4)"; break;
-	case QImage::Format_RGBA8888_Premultiplied: return "32-bit byte-ordered RGBA (Premultiplied) (4-4-4-4)"; break;
-	case QImage::Format_BGR30: return "32-bit (x)BGR (x-10-10-10)"; break;
-	case QImage::Format_A2BGR30_Premultiplied: return "32-bit ABGR (Premultiplied) (2-10-10-10)"; break;
-	case QImage::Format_RGB30: return "32-bit (x)RGB (x-10-10-10)"; break;
-	case QImage::Format_A2RGB30_Premultiplied: return "32-bit ARGB (Premultiplied) (2-10-10-10)"; break;
-	case QImage::Format_Alpha8: return "8-bit Alpha"; break;
-	case QImage::Format_Grayscale8: return "8-bit Grayscale"; break;
-	case QImage::Format_Grayscale16: return "16-bit Grayscale"; break;
-	case QImage::Format_RGBX64: return "64-bit halfword-ordered RGB(x) (16-16-16-x)"; break;
-	case QImage::Format_RGBA64: return "64-bit halfword-ordered RGBA (16-16-16-16)"; break;
-	case QImage::Format_RGBA64_Premultiplied: return "64-bit halfword-ordered RGBA (Premultiplied) (16-16-16-16)"; break;
-	case QImage::Format_BGR888: return "24-bit BGR"; break;
-	case QImage::Format_RGBX16FPx4: return "4xFP16 RGB(x) (16-16-16-x)"; break;
-	case QImage::Format_RGBA16FPx4: return "4xFP16 RGBA (16-16-16-16)"; break;
-	case QImage::Format_RGBA16FPx4_Premultiplied: return "4xFP16 RGBA (Premultiplied) (16-16-16-16)"; break;
-	case QImage::Format_RGBX32FPx4: return "4xFP32 RGB(x) (32-32-32-x)"; break;
-	case QImage::Format_RGBA32FPx4: return "4xFP32 RGBA (32-32-32-32)"; break;
-	case QImage::Format_RGBA32FPx4_Premultiplied: return "4xFP32 RGBA (Premultiplied) (32-32-32-32)"; break;
-	case QImage::Format_CMYK8888: return "32-bit byte-ordered CMYK"; break;
-	default: return "(Unknown Format)"; break;
-	};
-}
-
 std::unordered_map<AssetType, AssetInfo> g_assetInfoMap;
 
 void populateInfoMap() {
 	g_assetInfoMap = {
-	{ AssetType::Unknown, {&AssetDescriptorBase::factory,    "<ERROR>", QApplication::style()->standardIcon(QStyle::SP_MessageBoxCritical), {} }},
-	{ AssetType::Group,   {&AssetDescriptorGroup::factory,   "Group",   QApplication::style()->standardIcon(QStyle::SP_DirIcon),  {} }},
-	{ AssetType::Texture, {&AssetDescriptorTexture::factory, "Texture", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "bmp", "png", "tiff", "svg" }}},
-	{ AssetType::Sound,   {&AssetDescriptorSound::factory,   "Sound",   QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "mp3", "mp4", "ogg", "wav" }}},
-	{ AssetType::Mesh,    {&AssetDescriptorMesh::factory,    "Mesh",    QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "obj", "stl" }}},
-	{ AssetType::Text,    {&AssetDescriptorText::factory,    "Text",    QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "txt", "ini", "xml", "json" }}},
-	{ AssetType::Binary,  {&AssetDescriptorBinary::factory,  "Binary",  QApplication::style()->standardIcon(QStyle::SP_FileIcon), {} }},
+	{ AssetType::Unknown, {&AssetDescriptorBase::factory,    "<ERROR>", "AERR", QApplication::style()->standardIcon(QStyle::SP_MessageBoxCritical), {}}},
+	{ AssetType::Group,   {&AssetDescriptorGroup::factory,   "Group",   "AGRP", QApplication::style()->standardIcon(QStyle::SP_DirIcon),  {} }},
+	{ AssetType::Texture, {&AssetDescriptorTexture::factory, "Texture", "AIMG", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "bmp", "png", "tiff", "svg" }}},
+	{ AssetType::Sound,   {&AssetDescriptorSound::factory,   "Sound",   "AWAV", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "mp3", "mp4", "ogg", "wav" }}},
+	{ AssetType::Mesh,    {&AssetDescriptorMesh::factory,    "Mesh",    "AMSH", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "obj", "stl" }}},
+	{ AssetType::Text,    {&AssetDescriptorText::factory,    "Text",    "ATXT", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "txt", "ini", "xml", "json" }}},
+	{ AssetType::Binary,  {&AssetDescriptorBinary::factory,  "Binary",  "ABIN", QApplication::style()->standardIcon(QStyle::SP_FileIcon), {} }},
 	};
 }
 
@@ -78,6 +36,10 @@ QString AssetDescriptorBase::toString() const {
 
 void AssetDescriptorBase::fromString(const QString& string) {
 	Q_UNUSED(string);
+}
+
+QByteArray AssetDescriptorBase::toBytes() const {
+	return QByteArray();
 }
 
 QString AssetDescriptorBase::name() {
@@ -140,6 +102,11 @@ void AssetDescriptorTexture::fromString(const QString& string) {
 	m_name = (list.size() > 1) ? list[1] : "";
 	m_filename = (list.size() > 2) ? list[2] : "";
 	m_textureGroupIndex = (list.size() > 3) ? list[3].toInt() : 0;
+	updateSize();
+}
+
+QByteArray AssetDescriptorTexture::toBytes() const {
+	QByteArray();
 }
 
 QString AssetDescriptorTexture::filename() const {
@@ -156,6 +123,27 @@ int AssetDescriptorTexture::textureGroupIndex() const {
 
 void AssetDescriptorTexture::setTextureGroupIndex(int textureGroupIndex) {
 	m_textureGroupIndex = textureGroupIndex;
+}
+
+int AssetDescriptorTexture::getWidth() const {
+	return m_width;
+}
+
+int AssetDescriptorTexture::getHeight() const {
+	return m_height;
+}
+
+void AssetDescriptorTexture::updateSize() {
+	QImageReader reader(m_filename);
+	QImage image = reader.read();
+	if (!image.isNull()) {
+		m_width = image.width();
+		m_height = image.height();
+	}
+	else {
+		m_width = -1;
+		m_height = -1;
+	}
 }
 
 AssetDescriptorPtr AssetDescriptorTexture::factory() {
@@ -185,6 +173,11 @@ void AssetDescriptorSound::fromString(const QString& string) {
 	m_filename = (list.size() > 2) ? list[2] : "";
 }
 
+QByteArray AssetDescriptorSound::toBytes() const
+{
+	return QByteArray();
+}
+
 AssetDescriptorPtr AssetDescriptorSound::factory() {
 	return std::make_shared<AssetDescriptorSound>();
 }
@@ -210,6 +203,11 @@ void AssetDescriptorMesh::fromString(const QString& string) {
 	}
 	m_name = (list.size() > 1) ? list[1] : "";
 	m_filename = (list.size() > 2) ? list[2] : "";
+}
+
+QByteArray AssetDescriptorMesh::toBytes() const
+{
+	return QByteArray();
 }
 
 AssetDescriptorPtr AssetDescriptorMesh::factory() {
@@ -239,6 +237,11 @@ void AssetDescriptorText::fromString(const QString& string) {
 	m_filename = (list.size() > 2) ? list[2] : "";
 }
 
+QByteArray AssetDescriptorText::toBytes() const
+{
+	return QByteArray();
+}
+
 AssetDescriptorPtr AssetDescriptorText::factory() {
 	return std::make_shared<AssetDescriptorText>();
 }
@@ -264,6 +267,10 @@ void AssetDescriptorBinary::fromString(const QString& string) {
 	}
 	m_name = (list.size() > 1) ? list[1] : "";
 	m_filename = (list.size() > 2) ? list[2] : "";
+}
+
+QByteArray AssetDescriptorBinary::toBytes() const {
+	return QByteArray();
 }
 
 AssetDescriptorPtr AssetDescriptorBinary::factory() {
@@ -901,7 +908,7 @@ void AssetEditor::setIndex(const QModelIndex& index) {
 				layoutNew->addWidget(new QLabel(textureFile.fileName()), 2, 1, Qt::AlignLeft);
 				layoutNew->addWidget(new QLabel("Properties: "), 3, 0, Qt::AlignRight);
 				layoutNew->addWidget(new QLabel(QString("%1 x %2").arg(textureImage.width()).arg(textureImage.height())), 3, 1, Qt::AlignLeft);
-				layoutNew->addWidget(new QLabel(QString("%1").arg(ImageFormatString(textureImage.format()))), 4, 1, Qt::AlignLeft);
+				layoutNew->addWidget(new QLabel(QString("%1").arg(imageFormatString(textureImage.format()))), 4, 1, Qt::AlignLeft);
 				layoutNew->addWidget(new QLabel("Texture Group: "), 5, 0, Qt::AlignRight);
 				m_comboBox_textureGroups = new QComboBox();
 				m_comboBox_textureGroups->addItems(g_textureGroups);

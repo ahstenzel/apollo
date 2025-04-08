@@ -1,15 +1,7 @@
 #include "ProjectWidget.hpp"
 #include "MainWindow.hpp"
-
-bool versionStringMatch(QString v1, QString v2, bool exact) {
-	QStringList rev1 = v1.split(".");
-	QStringList rev2 = v2.split(".");
-	if (rev1.length() < 3 || rev2.length() < 3) return false;
-	if (rev1[0] != rev2[0]) return false;
-	if (rev1[1] != rev1[1]) return false;
-	if (exact && rev1[2] != rev2[2]) return false;
-	return true;
-}
+#include "TextureGroupBuilder.hpp"
+#include "ResourceGenerator.hpp"
 
 ProjectWidget::ProjectWidget(QWidget* parent) :
 	QWidget(parent) {
@@ -71,7 +63,7 @@ ProjectWidget::ProjectWidget(QWidget* parent) :
 	m_layout_AssetTab_AssetButtons->addWidget(m_pushButton_AssetTab_AddFile);
 	m_layout_AssetTab_AssetButtons->addStretch();
 
-	// Texture page tab
+	// Texture group tab
 	m_widget_TextureGroupTab = new QWidget();
 	m_tabWidget_Main->addTab(m_widget_TextureGroupTab, "Texture Groups");
 	m_layout_TextureGroupTab = new QVBoxLayout();
@@ -315,11 +307,135 @@ bool ProjectWidget::save(const QString& filename) {
 	}
 }
 
-const AssetTreeView* ProjectWidget::getAssetTree() const {
+bool ProjectWidget::generate(const QString& filename) {
+	try {
+		// Collect all assets descriptors into a list
+		QModelIndex indexRoot = getAssetModel()->rootIndex();
+		AssetTreeItem* itemRoot = static_cast<AssetTreeItem*>(indexRoot.internalPointer());
+		std::vector<AssetDescriptorPtr> descriptorList;
+		std::vector<AssetTreeItem*> assetList = { itemRoot };
+		while (!assetList.empty()) {
+			AssetTreeItem* assetCurrent = assetList.back();
+			assetList.pop_back();
+			if (assetCurrent->assetType() == AssetType::Group) {
+				for (int i = 0; i < assetCurrent->childCount(); ++i) {
+					AssetTreeItem* assetChild = assetCurrent->child(i).get();
+					assetList.push_back(assetChild);
+				}
+			}
+			else {
+				descriptorList.push_back(assetCurrent->assetDescriptor());
+			}
+		}
+
+		// Create texture group builders
+		int textureSize = m_comboBox_TextureGroupTab_Info_Size->currentText().toInt();
+		std::vector<TextureGroupBuilder> textureGroups;
+		std::unordered_map<QString, TextureGroupBuilder*> textureGroupNameMap;
+		for (auto& textureGroupName : g_textureGroups) {
+			textureGroups.emplace_back(textureSize, textureGroupName);
+			textureGroupNameMap[textureGroupName] = &textureGroups.back();
+		}
+
+		// Add all textures to the correct group
+		for (auto& descriptor : descriptorList) {
+			if (descriptor->assetType() == AssetType::Texture) {
+				AssetDescriptorTexture* texture = static_cast<AssetDescriptorTexture*>(descriptor.get());
+				textureGroupNameMap[g_textureGroups[texture->textureGroupIndex()]]->push(texture);
+			}
+		}
+
+		// Build all texture groups, splitting ones that are too big
+		QStringList splitTextureGroups;
+		for (int i = 0; i < textureGroups.size(); ++i) {
+			auto leftoverAssets = textureGroups[i].buildGroup();
+			if (!leftoverAssets.empty()) {
+				// Put leftover assets that didnt fit into their own new texture group
+				QString newTextureGroupName = textureGroupNameIncrement(textureGroups[i].groupName());
+				textureGroups.emplace_back(textureSize, newTextureGroupName);
+				textureGroups.back().assign(std::move(leftoverAssets));
+				textureGroupNameMap[newTextureGroupName] = &textureGroups.back();
+
+				// Add name to list to notify user of group split
+				QString baseTextureGroupName = textureGroupNameBase(textureGroups[i].groupName());
+				if (baseTextureGroupName != g_defaultTextureGroupName) {
+					splitTextureGroups << baseTextureGroupName;
+				}
+			}
+		}
+
+		// Generate images for all texture groups
+		std::vector<QImage> textureGroupImages;
+		for (auto& textureGroup : textureGroups) {
+			QImage textureGroupImage = textureGroup.generateImage();
+			if (textureGroupImage.isNull()) {
+				throw std::exception(textureGroup.error().toStdString().c_str());
+			}
+			textureGroupImages.push_back(textureGroupImage);
+		}
+
+		// Write header
+		QByteArray bytes;
+		byteArrayPushStr(&bytes, "ARCF", 4);             // Signature
+		byteArrayPushInt8(&bytes, APOLLO_VERSION_MAJOR); // Version (major)
+		byteArrayPushInt8(&bytes, APOLLO_VERSION_MINOR); // Version (minor)
+		byteArrayPushInt8(&bytes, APOLLO_VERSION_PATCH); // Version (patch)
+		byteArrayPushInt8(&bytes, 0u);                   // (Reserved)
+		byteArrayPushInt64(&bytes, 0u);                  // Cypher IV
+		byteArrayPushInt64(&bytes, 0u);                  // ...
+		byteArrayPushInt64(&bytes, 0u);                  // ...
+		byteArrayPushInt64(&bytes, 0u);                  // ...
+		byteArrayPushInt64(&bytes, 0u);                  // Texture groups offset
+		byteArrayPushInt64(&bytes, 0u);                  // First data chunk offset
+		byteArrayPushInt64(&bytes, 0u);                  // Asset table offset
+		byteArrayPad(&bytes, APOLLO_ARC_ALIGN);
+
+		// Write texture pages
+		ResourceSectionTextureGroup sectionTextureGroup(textureGroupImages.size());
+		for (auto& textureGroupImage : textureGroupImages) {
+			sectionTextureGroup.insert(textureGroupImage);
+		}
+		bytes.append(sectionTextureGroup.toBytes());
+
+		// Write data chunk
+		ResourceSectionAssetData sectionAssetData(descriptorList.size(), &textureGroups);
+		for (auto& descriptor : descriptorList) {
+			sectionAssetData.insert(descriptor);
+		}
+		bytes.append(sectionAssetData.toBytes());
+
+		// Write asset table
+		ResourceSectionAssetTable sectionAssetTable(descriptorList.size());
+		for (auto& descriptor : descriptorList) {
+			QString assetName = descriptor->name();
+			std::uint64_t assetOffset = sectionAssetData.getAssetOffset(assetName);
+			if (assetOffset < std::numeric_limits<std::uint64_t>::max()) {
+				sectionAssetTable.insert(assetName.toStdString().data(), assetName.size(), assetOffset);
+			}
+		}
+		bytes.append(sectionAssetTable.toBytes());
+
+		// Write file
+		QFile file(m_projectFilename);
+		if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+			throw std::exception("Could not open file for writing!");
+		}
+		file.write(bytes);
+		file.close();
+
+		return true;
+	}
+	catch (std::exception& e) {
+		m_errorMessage = QString(e.what());
+		return false;
+	}
+}
+
+AssetTreeView* ProjectWidget::getAssetTree() const {
 	return m_treeView_AssetTab_Assets;
 }
 
-const AssetTreeModel* ProjectWidget::getAssetModel() const {
+AssetTreeModel* ProjectWidget::getAssetModel() const {
 	return static_cast<AssetTreeModel*>(m_treeView_AssetTab_Assets->model());
 }
 

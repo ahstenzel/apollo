@@ -9,9 +9,6 @@
 #include "AssetDialog.hpp"
 #include "TextureGroupInfo.hpp"
 
- // Utility functions
-bool versionStringMatch(QString v1, QString v2, bool exact = false);
-
 class ProjectWidget : public QWidget {
 	Q_OBJECT
 public:
@@ -21,9 +18,10 @@ public:
 	void init();
 	bool load(const QString& filename);
 	bool save(const QString& filename = "");
+	bool generate(const QString& filename = "");
 
-	const AssetTreeView* getAssetTree() const;
-	const AssetTreeModel* getAssetModel() const;
+	AssetTreeView* getAssetTree() const;
+	AssetTreeModel* getAssetModel() const;
 	QString projectFilename();
 	QString getErrorMessage() const;
 	bool dirty() const;
@@ -32,9 +30,6 @@ public:
 private:
 	void setProjectFilename(const QString& filename);
 	QDomElement addElement(QDomDocument& doc, QDomNode& node, const QString& tag, const QString& value = "");
-	inline AssetTreeModel* getAssetModel() {
-		return static_cast<AssetTreeModel*>(m_treeView_AssetTab_Assets->model());
-	}
 	void setAssetModel(AssetTreeModel* model);
 
 	QString m_projectFilename;

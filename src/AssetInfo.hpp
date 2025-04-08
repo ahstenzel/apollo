@@ -19,10 +19,17 @@ enum class AssetType {
 extern const QChar g_assetDelim;
 extern const QString g_rootAssetName;
 
-QString ImageFormatString(QImage::Format format);
+struct AssetInfo {
+	AssetDescriptorFactoryFptr m_factoryFunction = nullptr;
+	QString m_name;
+	QString m_signature;
+	QIcon m_icon;
+	QStringList m_extensions;
+};
 
-class AssetDescriptorBase;
-typedef std::shared_ptr<AssetDescriptorBase> AssetDescriptorPtr;
+extern std::unordered_map<AssetType, AssetInfo> g_assetInfoMap;
+
+void populateInfoMap();
 
 template<typename... Args>
 inline QString buildAssetString(QStringList tokens, Args&&... args) {
@@ -32,6 +39,9 @@ inline QString buildAssetString(QStringList tokens) {
 	return tokens.join(g_assetDelim);
 }
 
+class AssetDescriptorBase;
+typedef std::shared_ptr<AssetDescriptorBase> AssetDescriptorPtr;
+
 class AssetDescriptorBase {
 public:
 	AssetDescriptorBase();
@@ -39,6 +49,7 @@ public:
 	AssetType assetType() const;
 	virtual QString toString() const;
 	virtual void fromString(const QString& string);
+	virtual QByteArray toBytes() const;
 
 	virtual QString name();
 	virtual void setName(const QString& name);
@@ -65,16 +76,23 @@ public:
 	~AssetDescriptorTexture();
 	QString toString() const override;
 	void fromString(const QString& string) override;
+	QByteArray toBytes() const override;
 
 	QString filename() const;
 	void setFilename(const QString& filename);
 	int textureGroupIndex() const;
 	void setTextureGroupIndex(int textureGroupIndex);
+	int getWidth() const;
+	int getHeight() const;
 
 	static AssetDescriptorPtr factory();
 private:
 	QString m_filename = "";
 	int m_textureGroupIndex = 0;
+	int m_width = -1;
+	int m_height = -1;
+
+	void updateSize();
 };
 
 class AssetDescriptorSound : public AssetDescriptorBase {
@@ -83,6 +101,7 @@ public:
 	~AssetDescriptorSound();
 	QString toString() const override;
 	void fromString(const QString& string) override;
+	QByteArray toBytes() const override;
 
 	static AssetDescriptorPtr factory();
 private:
@@ -95,6 +114,7 @@ public:
 	~AssetDescriptorMesh();
 	QString toString() const override;
 	void fromString(const QString& string) override;
+	QByteArray toBytes() const override;
 
 	static AssetDescriptorPtr factory();
 private:
@@ -107,6 +127,7 @@ public:
 	~AssetDescriptorText();
 	QString toString() const override;
 	void fromString(const QString& string) override;
+	QByteArray toBytes() const override;
 
 	static AssetDescriptorPtr factory();
 private:
@@ -119,6 +140,7 @@ public:
 	~AssetDescriptorBinary();
 	QString toString() const override;
 	void fromString(const QString& string) override;
+	QByteArray toBytes() const override;
 
 	static AssetDescriptorPtr factory();
 private:
@@ -126,17 +148,6 @@ private:
 };
 
 typedef AssetDescriptorPtr(*AssetDescriptorFactoryFptr)();
-
-struct AssetInfo {
-	AssetDescriptorFactoryFptr m_factoryFunction = nullptr;
-	QString m_name;
-	QIcon m_icon;
-	QStringList m_extensions;
-};
-
-extern std::unordered_map<AssetType, AssetInfo> g_assetInfoMap;
-
-void populateInfoMap();
 
 AssetDescriptorPtr AssetDescriptorFactory(const QString& string);
 
