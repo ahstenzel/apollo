@@ -197,9 +197,12 @@ bool ProjectWidget::load(const QString& filename) {
 			}
 			else if (elemTop.tagName() == "textureGroups") {
 				int count = elemTop.attribute("count", "0").toInt();
-				textureGroups = elemTop.attribute("groups", "").split(g_assetDelim);
-				if (count != textureGroups.size()) {
-					throw std::exception("Invalid number of texture groups!");
+				QString textureGroupList = elemTop.attribute("groups", "");
+				if (!textureGroupList.isEmpty()) {
+					textureGroups = textureGroupList.split(g_assetDelim);
+					if (count != textureGroups.size()) {
+						throw std::exception("Invalid number of texture groups!");
+					}
 				}
 			}
 			else {
@@ -365,13 +368,19 @@ bool ProjectWidget::generate(const QString& filename) {
 		}
 
 		// Generate images for all texture groups
-		std::vector<QImage> textureGroupImages;
+		QFileInfo generateFileInfo(filename);
+		QDir generateFileDir = generateFileInfo.absoluteDir();
+		std::vector<std::pair<QString, QImage>> textureGroupImages;
 		for (auto& textureGroup : textureGroups) {
 			QImage textureGroupImage = textureGroup.generateImage();
 			if (textureGroupImage.isNull()) {
 				throw std::exception(textureGroup.error().toStdString().c_str());
 			}
-			textureGroupImages.push_back(textureGroupImage);
+			textureGroupImages.push_back(std::make_pair(textureGroup.groupName(), textureGroupImage));
+
+			// Output image for debug purposes
+			QString imageFilename = generateFileDir.absoluteFilePath(textureGroup.groupName());
+			textureGroupImage.save(imageFilename + ".png", "PNG");
 		}
 
 		// Write header
@@ -388,16 +397,18 @@ bool ProjectWidget::generate(const QString& filename) {
 		byteArrayPushInt64(&bytes, 0u);                  // Texture groups offset
 		byteArrayPushInt64(&bytes, 0u);                  // First data chunk offset
 		byteArrayPushInt64(&bytes, 0u);                  // Asset table offset
-		byteArrayPad(&bytes, APOLLO_ARC_ALIGN);
+		byteArrayAlign(&bytes, APOLLO_ARC_ALIGN);
 
 		// Write texture pages
+		byteArraySetInt64(&bytes, 40u, (uint64_t)bytes.size());
 		ResourceSectionTextureGroup sectionTextureGroup(textureGroupImages.size());
 		for (auto& textureGroupImage : textureGroupImages) {
-			sectionTextureGroup.insert(textureGroupImage);
+			sectionTextureGroup.insert(textureGroupImage.first, textureGroupImage.second);
 		}
 		bytes.append(sectionTextureGroup.toBytes());
 
 		// Write data chunk
+		byteArraySetInt64(&bytes, 48u, (uint64_t)bytes.size());
 		ResourceSectionAssetData sectionAssetData(descriptorList.size(), &textureGroups);
 		for (auto& descriptor : descriptorList) {
 			sectionAssetData.insert(descriptor);
@@ -405,6 +416,7 @@ bool ProjectWidget::generate(const QString& filename) {
 		bytes.append(sectionAssetData.toBytes());
 
 		// Write asset table
+		byteArraySetInt64(&bytes, 56u, (uint64_t)bytes.size());
 		ResourceSectionAssetTable sectionAssetTable(descriptorList.size());
 		for (auto& descriptor : descriptorList) {
 			QString assetName = descriptor->name();
@@ -416,7 +428,7 @@ bool ProjectWidget::generate(const QString& filename) {
 		bytes.append(sectionAssetTable.toBytes());
 
 		// Write file
-		QFile file(m_projectFilename);
+		QFile file(filename);
 		if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
 			throw std::exception("Could not open file for writing!");
 		}

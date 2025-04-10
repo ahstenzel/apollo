@@ -7,6 +7,9 @@
 #include "Common.hpp"
 #include "ProjectWidget.hpp"
 
+/// <summary>
+/// Widget for application window.
+/// </summary>
 class MainWindow : public QMainWindow {
 	Q_OBJECT
 public:

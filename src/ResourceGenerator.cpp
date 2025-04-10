@@ -1,4 +1,5 @@
 #include "ResourceGenerator.hpp"
+#include "lz4.h"
 
 ResourceSectionTextureGroup::ResourceSectionTextureGroup() {}
 
@@ -39,11 +40,41 @@ ResourceSectionTextureGroup& ResourceSectionTextureGroup::operator=(ResourceSect
 	return *this;
 }
 
-void ResourceSectionTextureGroup::insert(const QImage& image) {
-	QByteArray imageData((char*)(image.bits(), image.sizeInBytes()));
-	m_imageData.push_back(imageData);
-	m_stride = std::max(m_stride, roundUp(imageData.size(), APOLLO_ARC_ALIGN));
+void ResourceSectionTextureGroup::insert(const QString& name, const QImage& image) {
+	// Compress image
+	bool compressed = true;
+	int uncompressedSize = image.sizeInBytes();
+	int maxCompressedSize = LZ4_compressBound(uncompressedSize);
+	char* compressedBuffer = new char[maxCompressedSize];
+	int compressedSize = LZ4_compress_default((char*)(image.bits()), compressedBuffer, uncompressedSize, maxCompressedSize);
+	if (compressedSize == 0) {
+		compressed = false;
+		delete[] compressedBuffer;
+		compressedBuffer = (char*)(image.bits());
+		compressedSize = uncompressedSize;
+	}
+	QByteArray imageData(compressedBuffer, compressedSize);
+
+	// Calculate CRC32
+	uint32_t crc = crc32Calculate(image.bits(), uncompressedSize);
+
+	// Write header & data
+	QByteArray block;
+	byteArrayPushStr(&block, name, 32);							// Group name
+	byteArrayPushInt64(&block, (uint64_t)uncompressedSize);		// Uncompressed size
+	byteArrayPushInt64(&block, (uint64_t)compressedSize);		// Compressed size
+	byteArrayPushInt32(&block, crc);							// CRC
+	byteArrayAlign(&block, APOLLO_ARC_ALIGN);					// Reserved
+	block.push_back(imageData);									// Data block
+	byteArrayAlign(&block, APOLLO_ARC_ALIGN);
+
+	// Add to buffer
+	m_imageData.push_back(block);
+	m_stride = std::max(m_stride, (uint64_t)imageData.size());
 	m_dirty = true;
+	if (compressed) {
+		delete[] compressedBuffer;
+	}
 }
 
 std::size_t ResourceSectionTextureGroup::size() const {
@@ -71,7 +102,7 @@ QByteArray ResourceSectionTextureGroup::toBytes() {
 		// Build images
 		for (auto& image : m_imageData) {
 			m_byteArray.append(image);
-			byteArrayPad(&m_byteArray, APOLLO_ARC_ALIGN);
+			byteArrayAlign(&m_byteArray, APOLLO_ARC_ALIGN);
 		}
 	}
 	return m_byteArray;
@@ -189,9 +220,10 @@ QByteArray ResourceSectionAssetTable::toBytes() {
 		m_byteArray.clear();
 
 		// Write header
-		byteArrayPushStr(&m_byteArray, "ARFT", 4);
-		byteArrayPushInt32(&m_byteArray, std::uint32_t(m_length));
-		byteArrayPushInt32(&m_byteArray, std::uint32_t(m_capacity));
+		byteArrayPushStr(&m_byteArray, "ARFT", 4);						// Signature
+		byteArrayPushInt32(&m_byteArray, std::uint32_t(m_length));		// Asset count
+		byteArrayPushInt32(&m_byteArray, std::uint32_t(m_capacity));	// Asset capacity
+		byteArrayAlign(&m_byteArray, APOLLO_ARC_ALIGN);					// Reserved
 
 		// Write control block
 		for (std::size_t i = 0; i < m_capacity; ++i) {
@@ -206,7 +238,7 @@ QByteArray ResourceSectionAssetTable::toBytes() {
 		}
 
 		// Padding
-		byteArrayPad(&m_byteArray, APOLLO_ARC_ALIGN);
+		byteArrayAlign(&m_byteArray, APOLLO_ARC_ALIGN);
 	}
 	return m_byteArray;
 }
@@ -312,22 +344,28 @@ ResourceSectionAssetData::ResourceSectionAssetData(std::size_t capacity, std::ve
 }
 
 ResourceSectionAssetData::ResourceSectionAssetData(ResourceSectionAssetData&& other) noexcept {
-	m_assets = std::move(other.m_assets);
 	m_dirty = std::move(other.m_dirty);
+	m_assets = std::move(other.m_assets);
+	m_textureGroups = std::move(other.m_textureGroups);
+	m_assetOffsetMap = std::move(other.m_assetOffsetMap);
 	m_byteArray = std::move(other.m_byteArray);
 }
 
 ResourceSectionAssetData::ResourceSectionAssetData(const ResourceSectionAssetData& other) {
-	m_assets = other.m_assets;
 	m_dirty = other.m_dirty;
+	m_assets = other.m_assets;
+	m_textureGroups = other.m_textureGroups;
+	m_assetOffsetMap = other.m_assetOffsetMap;
 	m_byteArray = other.m_byteArray;
 }
 
 ResourceSectionAssetData::~ResourceSectionAssetData() = default;
 
 void swap(ResourceSectionAssetData& lhs, ResourceSectionAssetData& rhs) {
-	std::swap(lhs.m_assets, rhs.m_assets);
 	std::swap(lhs.m_dirty, rhs.m_dirty);
+	std::swap(lhs.m_assets, rhs.m_assets);
+	std::swap(lhs.m_textureGroups, rhs.m_textureGroups);
+	std::swap(lhs.m_assetOffsetMap, rhs.m_assetOffsetMap);
 	std::swap(lhs.m_byteArray, rhs.m_byteArray);
 }
 
@@ -367,27 +405,33 @@ QByteArray ResourceSectionAssetData::toBytes() {
 				// Construct simple asset block that references texture group
 				TextureGroupEntry entry = entryPair.second;
 
+				// Construct data
+				QByteArray assetBytes;
+				byteArrayPushInt32(&assetBytes, uint32_t(i));
+				byteArrayPushInt32(&assetBytes, uint32_t(entry.m_xpos));
+				byteArrayPushInt32(&assetBytes, uint32_t(entry.m_ypos));
+				byteArrayPushInt32(&assetBytes, uint32_t(entry.m_texture->getWidth()));
+				byteArrayPushInt32(&assetBytes, uint32_t(entry.m_texture->getHeight()));
+				byteArrayAlign(&assetBytes, APOLLO_ARC_ALIGN);
+
+				// Calculate CRC
+				uint32_t crc = crc32Calculate(assetBytes.data(), assetBytes.size());
+
 				// Write header
-				QByteArray assetData;
-				byteArrayPushStr(&assetData, g_assetInfoMap[AssetType::Texture].m_signature, 4);
-				byteArrayPushInt32(&assetData, 0u);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushStr(&assetData, entry.m_texture->name(), 32);
-				byteArrayPushInt64(&assetData, 0ul);
+				QByteArray block;
+				byteArrayPushStr(&block, entry.m_texture->name(), 32);		// Name
+				byteArrayPushInt64(&block, 0ul);							// Next Chunk
+				byteArrayPushInt64(&block, 0ul);							// Prev Chunk
+				byteArrayPushInt64(&block, assetBytes.size());				// Uncompressed Size
+				byteArrayPushInt64(&block, assetBytes.size());				// Compressed Size
+				byteArrayPushStr(&block, g_assetInfoMap[AssetType::Texture].m_signature, 4);	// Type
+				byteArrayPushInt32(&block, crc);							// CRC32
+				byteArrayAlign(&block, APOLLO_ARC_ALIGN);					// Reserved
+				block.append(assetBytes);									// Data
 
-				// Write data
-				byteArrayPushInt32(&assetData, uint32_t(i));
-				byteArrayPushInt32(&assetData, uint32_t(entry.m_xpos));
-				byteArrayPushInt32(&assetData, uint32_t(entry.m_ypos));
-				byteArrayPushInt32(&assetData, uint32_t(entry.m_texture->getWidth()));
-				byteArrayPushInt32(&assetData, uint32_t(entry.m_texture->getHeight()));
-
-				byteArrayPad(&assetData, APOLLO_ARC_ALIGN);
+				byteArrayAlign(&block, APOLLO_ARC_ALIGN);
 				m_assetOffsetMap.insert(std::make_pair(entry.m_texture->name(), m_byteArray.size()));
-				m_byteArray.append(assetData);
+				m_byteArray.append(block);
 			}
 		}
 
@@ -395,23 +439,43 @@ QByteArray ResourceSectionAssetData::toBytes() {
 		for (auto& asset : m_assets) {
 			// Skip textures unless no texture groups have been defined
 			if (asset->assetType() != AssetType::Texture || !m_textureGroups) {
+				// Compress data
+				QByteArray assetBytes = asset->toBytes();
+				bool compressed = true;
+				uint64_t uncompressedSize = assetBytes.size();
+				uint64_t maxCompressedSize = LZ4_compressBound(uncompressedSize);
+				char* compressedBuffer = new char[maxCompressedSize];
+				uint64_t compressedSize = LZ4_compress_default(assetBytes.data(), compressedBuffer, uncompressedSize, maxCompressedSize);
+				if (compressedSize == 0) {
+					compressed = false;
+					delete[] compressedBuffer;
+					compressedBuffer = assetBytes.data();
+					compressedSize = uncompressedSize;
+				}
+
+				// Calculate crc
+				uint32_t crc = crc32Calculate(assetBytes.data(), uncompressedSize);
+
 				// Write header
-				QByteArray assetData;
-				byteArrayPushStr(&assetData, g_assetInfoMap[AssetType::Texture].m_signature, 4);
-				byteArrayPushInt32(&assetData, 0u);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushInt64(&assetData, 0ul);
-				byteArrayPushStr(&assetData, asset->name(), 32);
-				byteArrayPushInt64(&assetData, 0ul);
+				QByteArray block;
+				byteArrayPushStr(&block, asset->name(), 32);	// Name
+				byteArrayPushInt64(&block, 0ul);				// Next Chunk
+				byteArrayPushInt64(&block, 0ul);				// Prev Chunk
+				byteArrayPushInt64(&block, uncompressedSize);	// Uncompressed Size
+				byteArrayPushInt64(&block, compressedSize);		// Compressed Size
+				byteArrayPushStr(&block, g_assetInfoMap[asset->assetType()].m_signature, 4);	// Type
+				byteArrayPushInt32(&block, crc);				// CRC32
+				byteArrayAlign(&block, APOLLO_ARC_ALIGN);		// Resereved
 
 				// Write data
-				assetData.append(asset->toBytes());
+				block.append(compressedBuffer, compressedSize);
+				byteArrayAlign(&block, APOLLO_ARC_ALIGN);
 
-				byteArrayPad(&assetData, APOLLO_ARC_ALIGN);
 				m_assetOffsetMap.insert(std::make_pair(asset->name(), m_byteArray.size()));
-				m_byteArray.append(assetData);
+				m_byteArray.append(block);
+				if (compressed) {
+					delete[] compressedBuffer;
+				}
 			}
 		}
 	}

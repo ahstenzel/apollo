@@ -10,6 +10,9 @@ extern QString g_defaultTextureGroupName;
 extern QStringList g_textureGroups;
 extern QStringList g_textureGroupSizes;
 
+/// <summary>
+/// Widget for displaying all textures in a group.
+/// </summary>
 class TextureGroupContents : public QGroupBox {
 	Q_OBJECT
 public:
@@ -29,6 +32,9 @@ private:
 	QListView* m_listView_Textures;
 };
 
+/// <summary>
+/// Dialog for naming a texture group.
+/// </summary>
 class TextureGroupNameDialog : public QDialog {
 	Q_OBJECT
 public:

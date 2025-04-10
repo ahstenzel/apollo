@@ -20,10 +20,11 @@ endif()
 set(QT_FULL_PATH "$ENV{QT_PATH}/${APOLLO_GEN}_${APOLLO_ARCH}")
 cmake_print_variables(QT_FULL_PATH)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${QT_FULL_PATH}")
 
 # Load Qt support
 set(Qt6_DIR "${QT_FULL_PATH}/lib/cmake/Qt6")
-find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Xml)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Xml)
 qt_standard_project_setup()
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)

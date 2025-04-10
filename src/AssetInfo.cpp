@@ -106,7 +106,7 @@ void AssetDescriptorTexture::fromString(const QString& string) {
 }
 
 QByteArray AssetDescriptorTexture::toBytes() const {
-	QByteArray();
+	return QByteArray();
 }
 
 QString AssetDescriptorTexture::filename() const {
@@ -290,6 +290,9 @@ AssetDescriptorPtr AssetDescriptorFactory(const QString& string) {
 			type = pair.first;
 			break;
 		}
+	}
+	if (type == AssetType::Unknown) {
+		return nullptr;
 	}
 
 	// Create asset descriptor & populate data

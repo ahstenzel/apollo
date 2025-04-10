@@ -1,14 +1,24 @@
 #include "Common.hpp"
 
+bool versionStringMatch(QString v1, QString v2, bool exact) {
+	QStringList rev1 = v1.split(".");
+	QStringList rev2 = v2.split(".");
+	if (rev1.length() < 3 || rev2.length() < 3) return false;
+	if (rev1[0] != rev2[0]) return false;
+	if (rev1[1] != rev1[1]) return false;
+	if (exact && rev1[2] != rev2[2]) return false;
+	return true;
+}
+
+char randChar() {
+	return (char)(32 + (rand() % 95));
+}
+
 std::uint64_t roundUp(std::uint64_t num, std::uint64_t multiple) {
 	if (multiple == 0) { return num; }
 	std::uint64_t r = num % multiple;
 	if (r == 0) { return num; }
 	return num + multiple - r;
-}
-
-char randChar() {
-	return (char)(32 + (rand() % 95));
 }
 
 std::uint32_t crc32Calculate(const void* data, std::size_t length, std::uint32_t previousCRC) {
@@ -61,16 +71,6 @@ const std::uint32_t crc32Lookup[256] = {
 	0xBDBDF21C,0xCABAC28A,0x53B39330,0x24B4A3A6,0xBAD03605,0xCDD70693,0x54DE5729,0x23D967BF,
 	0xB3667A2E,0xC4614AB8,0x5D681B02,0x2A6F2B94,0xB40BBE37,0xC30C8EA1,0x5A05DF1B,0x2D02EF8D,
 };
-
-bool versionStringMatch(QString v1, QString v2, bool exact) {
-	QStringList rev1 = v1.split(".");
-	QStringList rev2 = v2.split(".");
-	if (rev1.length() < 3 || rev2.length() < 3) return false;
-	if (rev1[0] != rev2[0]) return false;
-	if (rev1[1] != rev1[1]) return false;
-	if (exact && rev1[2] != rev2[2]) return false;
-	return true;
-}
 
 QString imageFormatString(QImage::Format format) {
 	switch (format) {
@@ -236,7 +236,7 @@ void byteArraySetStr(QByteArray* array, qsizetype idx, const char* str, qsizetyp
 	}
 }
 
-void byteArrayPad(QByteArray* array, qsizetype alignTo) {
+void byteArrayAlign(QByteArray* array, qsizetype alignTo) {
 	while (array->size() % alignTo != 0) {
 		array->push_back((char)(0xFF));
 	}

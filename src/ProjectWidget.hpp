@@ -9,6 +9,9 @@
 #include "AssetDialog.hpp"
 #include "TextureGroupInfo.hpp"
 
+/// <summary>
+/// Top level widget for loading and maintaining a project file.
+/// </summary>
 class ProjectWidget : public QWidget {
 	Q_OBJECT
 public:

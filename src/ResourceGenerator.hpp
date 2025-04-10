@@ -9,6 +9,9 @@
 #include "TextureGroupInfo.hpp"
 #include "TextureGroupBuilder.hpp"
 
+/// <summary>
+/// Generates the 'texture group' section of the packed binary file.
+/// </summary>
 class ResourceSectionTextureGroup {
 public:
 	ResourceSectionTextureGroup();
@@ -21,7 +24,7 @@ public:
 	ResourceSectionTextureGroup& operator=(ResourceSectionTextureGroup& other);
 	ResourceSectionTextureGroup& operator=(ResourceSectionTextureGroup&& other) noexcept;
 
-	void insert(const QImage& image);
+	void insert(const QString& name, const QImage& image);
 	std::size_t size() const;
 	std::size_t sizeInBytes() const;
 	bool isEmpty() const;
@@ -34,6 +37,9 @@ private:
 	std::vector<QByteArray> m_imageData;
 };
 
+/// <summary>
+/// Generates the 'asset table' section of the packed binary file.
+/// </summary>
 class ResourceSectionAssetTable {
 private:
 	typedef std::uint32_t AssetHashType;
@@ -70,8 +76,10 @@ private:
 	static inline bool ctrlIsEmpty(std::uint8_t h) {
 		return h & 0x80;
 	}
-
-	/// @brief Struct representing a single file in a file table.
+	
+	/// <summary>
+	/// Single element in the asset table.
+	/// </summary>
 	struct AssetNode {
 		char name[32] = "\0";
 		AssetElementType data = 0;
@@ -84,7 +92,9 @@ private:
 	bool m_dirty = true;
 	QByteArray m_byteArray;
 public:
-	/// @brief Iterator for elements in a file table.
+	/// <summary>
+	/// Iterator for elements in the asset table.
+	/// </summary>
 	class iterator {
 	private:
 		ResourceSectionAssetTable* m_table;
@@ -115,6 +125,9 @@ public:
 	iterator end();
 };
 
+/// <summary>
+/// Generates the 'asset data' section of the packed binary file.
+/// </summary>
 class ResourceSectionAssetData {
 public:
 	ResourceSectionAssetData(std::vector<TextureGroupBuilder>* textureGroups = nullptr);

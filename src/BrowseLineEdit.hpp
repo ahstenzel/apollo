@@ -6,6 +6,9 @@
  */
 #include "Common.hpp"
 
+/// <summary>
+/// Widget for a line edit with a connected browse button.
+/// </summary>
 class BrowseLineEdit : public QGroupBox {
 	Q_OBJECT
 public:

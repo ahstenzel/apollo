@@ -6,6 +6,9 @@
  */
 #include "Common.hpp"
 
+/// <summary>
+/// Wrapper widget for displaying a scaled image.
+/// </summary>
 class ImageLabel : public QLabel {
 	Q_OBJECT
 public:
@@ -24,22 +27,3 @@ public slots:
 private:
 	QPixmap m_pixmap;
 };
-
-/*
-class ImageLabel : public QLabel {
-	Q_OBJECT;
-public:
-	explicit ImageLabel(QWidget* parent = nullptr);
-	explicit ImageLabel(const QPixmap& pixmap, QWidget* parent = nullptr);
-	~ImageLabel();
-
-public slots:
-	void setPixmap(const QPixmap& pixmap);
-
-private slots:
-	void resizeImage();
-
-protected:
-	void resizeEvent(QResizeEvent* ev);
-};
-*/
