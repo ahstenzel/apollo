@@ -43,6 +43,8 @@ private:
 	QGroupBox* m_groupBox_Info;
 	QFormLayout* m_layout_Info;
 	QLabel* m_label_Info_Name;
+	QCheckBox* m_checkBox_Info_UseEncryption;
+	QLineEdit* m_lineEdit_Info_EncryptionPassword;
 	QTabWidget* m_tabWidget_Main;
 	QWidget* m_widget_AssetTab;
 	QVBoxLayout* m_layout_AssetTab;
@@ -60,12 +62,14 @@ private:
 	QGridLayout* m_layout_TextureGroupTab_Info;
 	QComboBox* m_comboBox_TextureGroupTab_Info_TextureGroup;
 	QComboBox* m_comboBox_TextureGroupTab_Info_Size;
+	QComboBox* m_comboBox_TextureGroupTab_Info_Format;
 	QPushButton* m_pushButton_TextureGroupTab_AddGroup;
 	QPushButton* m_pushButton_TextureGroupTab_DeleteGroup;
 	TextureGroupContents* m_groupBox_TextureGroupTab_ViewGroup;
 	QWidget* m_widget_TileSetTab;
 
 public slots:
+	void onCheckStateChanged_CheckBox_UseEncryption(Qt::CheckState state);
 	void onClicked_PushButton_AssetTab_AddGroup();
 	void onClicked_PushButton_AssetTab_EditGroup();
 	void onClicked_PushButton_AssetTab_DeleteGroup();
@@ -80,4 +84,3 @@ public slots:
 	void onClicked_PushButton_TextureGroupTab_AddGroup();
 	void onClicked_PushButton_TextureGroupTab_DeleteGroup();
 };
-

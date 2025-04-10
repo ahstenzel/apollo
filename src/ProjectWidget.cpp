@@ -20,6 +20,13 @@ ProjectWidget::ProjectWidget(QWidget* parent) :
 	m_groupBox_Info->setLayout(m_layout_Info);
 	m_label_Info_Name = new QLabel();
 	m_layout_Info->addRow("Project Name", m_label_Info_Name);
+	m_checkBox_Info_UseEncryption = new QCheckBox();
+	connect(m_checkBox_Info_UseEncryption, &QCheckBox::checkStateChanged, this, &ProjectWidget::onCheckStateChanged_CheckBox_UseEncryption);
+	m_layout_Info->addRow("Use Encryption", m_checkBox_Info_UseEncryption);
+	m_lineEdit_Info_EncryptionPassword = new QLineEdit();
+	m_lineEdit_Info_EncryptionPassword->setEnabled(false);
+	connect(m_lineEdit_Info_EncryptionPassword, &QLineEdit::textChanged, this, &ProjectWidget::onDataChanged);
+	m_layout_Info->addRow("Encryption Password", m_lineEdit_Info_EncryptionPassword);
 
 	// Create tabs
 	m_tabWidget_Main = new QTabWidget();
@@ -85,13 +92,23 @@ ProjectWidget::ProjectWidget(QWidget* parent) :
 	connect(m_pushButton_TextureGroupTab_DeleteGroup, &QPushButton::clicked, this, &ProjectWidget::onClicked_PushButton_TextureGroupTab_DeleteGroup);
 	m_pushButton_TextureGroupTab_DeleteGroup->setEnabled(false);
 
+	m_comboBox_TextureGroupTab_Info_Format = new QComboBox();
+	m_comboBox_TextureGroupTab_Info_Format->addItem(imageFormatString(QImage::Format_ARGB32), QImage::Format_ARGB32);
+	m_comboBox_TextureGroupTab_Info_Format->addItem(imageFormatString(QImage::Format_ARGB32_Premultiplied), QImage::Format_ARGB32_Premultiplied);
+	m_comboBox_TextureGroupTab_Info_Format->addItem(imageFormatString(QImage::Format_ARGB6666_Premultiplied), QImage::Format_ARGB6666_Premultiplied);
+	m_comboBox_TextureGroupTab_Info_Format->addItem(imageFormatString(QImage::Format_ARGB4444_Premultiplied), QImage::Format_ARGB4444_Premultiplied);
+	m_comboBox_TextureGroupTab_Info_Format->addItem(imageFormatString(QImage::Format_Indexed8), QImage::Format_Indexed8);
+	m_comboBox_TextureGroupTab_Info_Format->setCurrentIndex(0);
+
 	m_layout_TextureGroupTab_Info->addWidget(new QLabel("Page Size"), 0, 0, Qt::AlignRight);
 	m_layout_TextureGroupTab_Info->addWidget(m_comboBox_TextureGroupTab_Info_Size, 0, 1, Qt::AlignLeft);
-	m_layout_TextureGroupTab_Info->addWidget(new QLabel("Texture Group"), 1, 0, Qt::AlignRight);
-	m_layout_TextureGroupTab_Info->addWidget(m_comboBox_TextureGroupTab_Info_TextureGroup, 1, 1, Qt::AlignLeft);
+	m_layout_TextureGroupTab_Info->addWidget(new QLabel("Texture Format"), 1, 0, Qt::AlignRight);
+	m_layout_TextureGroupTab_Info->addWidget(m_comboBox_TextureGroupTab_Info_Format, 1, 1, Qt::AlignLeft);
+	m_layout_TextureGroupTab_Info->addWidget(new QLabel("Texture Group"), 2, 0, Qt::AlignRight);
+	m_layout_TextureGroupTab_Info->addWidget(m_comboBox_TextureGroupTab_Info_TextureGroup, 2, 1, Qt::AlignLeft);
 	m_layout_TextureGroupTab_Info->setColumnStretch(2, 1);
-	m_layout_TextureGroupTab_Info->addWidget(m_pushButton_TextureGroupTab_AddGroup, 1, 3, Qt::AlignCenter);
-	m_layout_TextureGroupTab_Info->addWidget(m_pushButton_TextureGroupTab_DeleteGroup, 1, 4, Qt::AlignCenter);
+	m_layout_TextureGroupTab_Info->addWidget(m_pushButton_TextureGroupTab_AddGroup, 2, 3, Qt::AlignCenter);
+	m_layout_TextureGroupTab_Info->addWidget(m_pushButton_TextureGroupTab_DeleteGroup, 2, 4, Qt::AlignCenter);
 	//   Viewer
 	m_groupBox_TextureGroupTab_ViewGroup = new TextureGroupContents();
 	connect(m_comboBox_TextureGroupTab_Info_TextureGroup, &QComboBox::currentIndexChanged, m_groupBox_TextureGroupTab_ViewGroup, &TextureGroupContents::setTextureGroupIndex);
@@ -145,20 +162,17 @@ bool ProjectWidget::load(const QString& filename) {
 			throw std::exception("Document is not a valid arp filetype ");
 		}
 
-		// Get assets
+		// Get data
 		QStringList textureGroups;
 		AssetTreeModel* model = new AssetTreeModel();
 		QDomElement elemTop = elemRoot.firstChildElement();
 		for (; !elemTop.isNull(); elemTop = elemTop.nextSiblingElement()) {
 			QString tagName = elemTop.tagName();
-			if (elemTop.tagName() == "compression") {
-
+			if (elemTop.tagName() == "useEncryption") {
+				m_checkBox_Info_UseEncryption->setChecked(elemTop.text() == "true");
 			}
-			else if (elemTop.tagName() == "cipherMethod") {
-
-			}
-			else if (elemTop.tagName() == "cipherPassword") {
-
+			else if (elemTop.tagName() == "encryptionPassword") {
+				m_lineEdit_Info_EncryptionPassword->setText(elemTop.text());
 			}
 			else if (elemTop.tagName() == "asset") {
 				// Iterate through file tree
@@ -252,9 +266,8 @@ bool ProjectWidget::save(const QString& filename) {
 		doc.appendChild(doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"UTF-8\""));
 		QDomElement elemRoot = addElement(doc, doc, "arp");
 		elemRoot.setAttribute("version", APOLLO_VERSION_STR);
-		addElement(doc, elemRoot, "compression", "false");
-		addElement(doc, elemRoot, "cipherMethod", "none");
-		addElement(doc, elemRoot, "cipherPassword", "");
+		addElement(doc, elemRoot, "useEncryption", m_checkBox_Info_UseEncryption->isChecked() ? "true" : "false");
+		addElement(doc, elemRoot, "encryptionPassword", m_lineEdit_Info_EncryptionPassword->text());
 
 		// Iterate through asset tree
 		AssetTreeModel* model = getAssetModel();
@@ -312,6 +325,11 @@ bool ProjectWidget::save(const QString& filename) {
 
 bool ProjectWidget::generate(const QString& filename) {
 	try {
+		// Validate data
+		if (m_checkBox_Info_UseEncryption->isChecked() && m_lineEdit_Info_EncryptionPassword->text().isEmpty()) {
+			throw std::exception("Encryption password cannot be blank!");
+		}
+
 		// Collect all assets descriptors into a list
 		QModelIndex indexRoot = getAssetModel()->rootIndex();
 		AssetTreeItem* itemRoot = static_cast<AssetTreeItem*>(indexRoot.internalPointer());
@@ -335,8 +353,9 @@ bool ProjectWidget::generate(const QString& filename) {
 		int textureSize = m_comboBox_TextureGroupTab_Info_Size->currentText().toInt();
 		std::vector<TextureGroupBuilder> textureGroups;
 		std::unordered_map<QString, TextureGroupBuilder*> textureGroupNameMap;
+		QImage::Format textureFormat = (QImage::Format)m_comboBox_TextureGroupTab_Info_Format->currentData().toInt();
 		for (auto& textureGroupName : g_textureGroups) {
-			textureGroups.emplace_back(textureSize, textureGroupName);
+			textureGroups.emplace_back(textureSize, textureGroupName, textureFormat);
 			textureGroupNameMap[textureGroupName] = &textureGroups.back();
 		}
 
@@ -427,6 +446,31 @@ bool ProjectWidget::generate(const QString& filename) {
 		}
 		bytes.append(sectionAssetTable.toBytes());
 
+		// Encrypt contents
+		if (m_checkBox_Info_UseEncryption->isChecked()) {
+			// Pad out password to 32 characters
+			uint8_t key[32] = { 0 };
+			std::string stdKey = m_lineEdit_Info_EncryptionPassword->text().toStdString();
+			for (size_t i = 0; i < stdKey.length(); ++i) {
+				key[i] = (uint8_t)stdKey[i];
+			}
+
+			// Generate random IV
+			uint8_t iv[32] = { 0 };
+			for (size_t i = 0; i < sizeof(iv); ++i) {
+				iv[i] = (uint8_t)randChar();
+			}
+			QString ivString((char*)(&iv[0]));
+
+			// Encrypt buffer
+			size_t encryptionOffset = 40;
+			uint8_t* buf = (uint8_t*)bytes.data() + encryptionOffset;
+			AES_ctx ctx;
+			AES_init_ctx_iv(&ctx, &key[0], &iv[0]);
+			AES_CBC_encrypt_buffer(&ctx, buf, bytes.length() - encryptionOffset);
+			byteArraySetStr(&bytes, encryptionOffset - sizeof(iv), ivString, sizeof(iv));
+		}
+
 		// Write file
 		QFile file(filename);
 		if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -496,6 +540,11 @@ void ProjectWidget::setAssetModel(AssetTreeModel* model) {
 	m_treeView_AssetTab_Assets->selectionModel()->setModel(model);
 	connect(m_treeView_AssetTab_Assets->selectionModel(), &QItemSelectionModel::currentChanged, m_scrollArea_AssetTab_AssetEditor, &AssetEditor::onChanged_Index);
 	m_scrollArea_AssetTab_AssetEditor->setIndex({});
+}
+
+void ProjectWidget::onCheckStateChanged_CheckBox_UseEncryption(Qt::CheckState state) {
+	m_lineEdit_Info_EncryptionPassword->setEnabled(state == Qt::CheckState::Checked);
+	onDataChanged();
 }
 
 void ProjectWidget::onClicked_PushButton_AssetTab_AddGroup() {

@@ -1,55 +1,55 @@
-[Header]							(64 bytes)
-	Signature							(4 bytes)
-	Version								(4 bytes)
-		Major								(1 byte)
-		Minor								(1 byte)
-		Patch								(1 byte)
-		Reserved (0)						(1 byte)
-	AES IV							(32 bytes)
-	Texture Group Offset				(8 bytes)
-	First Data Chunk Offset				(8 bytes)
-	Asset Table Offset					(8 bytes)
+[Header]                  (64 bytes)
+  Signature                 (4 bytes)
+  Version                   (4 bytes)
+    Major                     (1 byte)
+    Minor                     (1 byte)
+    Patch                     (1 byte)
+    Reserved                  (1 byte)
+  AES IV                    (32 bytes)
+  Texture Group Offset      (8 bytes)
+  First Data Chunk Offset   (8 bytes)
+  Asset Table Offset        (8 bytes)
 
-[Texture Groups]					(x bytes) <16-byte aligned>
-	[Header]							(16 bytes)
-		Signature							(4 bytes)
-		Page Count							(4 bytes)
-		Page Stride							(8 bytes)
-	[Groups]							(x bytes) <16-byte aligned>
-		[Header]							(64 bytes)
-			Name								(32 bytes)
-			Uncompressed Size					(8 bytes)
-			Compressed Size						(8 bytes)
-			CRC32								(4 bytes)
-			Reserved							(12 bytes)
-		[Data]								(x bytes) <16-byte aligned>
-			Data								(x bytes)
-	...
+[Texture Groups]          (x bytes) <16-byte aligned>
+  [Header]                  (16 bytes)
+    Signature                 (4 bytes)
+    Page Count                (4 bytes)
+    Page Stride               (8 bytes)
+  [Groups]                  (x bytes) <16-byte aligned>
+    [Header]                  (64 bytes)
+      Name                      (32 bytes)
+      Uncompressed Size         (8 bytes)
+      Compressed Size           (8 bytes)
+      CRC32                     (4 bytes)
+      Reserved                  (12 bytes)
+    [Data]                    (x bytes) <16-byte aligned>
+      Data                      (x bytes)
+  ...
 
-[Data Chunk]						(x bytes) <16-byte aligned>
-	[Header]							(80 bytes)
-		Name								(32 bytes)
-		Next Chunk							(8 bytes)
-		Prev Chunk							(8 bytes)
-		Uncompressed Size					(8 bytes)
-		Compressed Size						(8 bytes)
-		Type								(4 bytes)
-		CRC32								(4 bytes)
-		Reserved							(8 bytes)
-	[Data]								(x bytes) <16-byte aligned>
-		Data								(x bytes)
+[Data Chunk]              (x bytes) <16-byte aligned>
+  [Header]                  (80 bytes)
+    Name                      (32 bytes)
+    Next Chunk                (8 bytes)
+    Prev Chunk                (8 bytes)
+    Uncompressed Size         (8 bytes)
+    Compressed Size           (8 bytes)
+    Type                      (4 bytes)
+    CRC32                     (4 bytes)
+    Reserved                  (8 bytes)
+  [Data]                    (x bytes) <16-byte aligned>
+    Data                      (x bytes)
 ...
 
-[Asset Table]						(x bytes) <16-byte aligned>
-	[Header]							(16 bytes)
-		Signature							(4 bytes)
-		Asset Count							(4 bytes)
-		Asset Capacity						(4 bytes)
-		Reserved							(4 bytes)
-	[Ctrl]								([Asset Count] bytes) <16-byte aligned>
-		Ctrl Block							(1 byte)
-	...
-	[Node]								([40 x Asset Capacity] bytes)
-		Name								(32 bytes)
-		Data Chunk Offset					(8 bytes)
-	...
+[Asset Table]             (x bytes) <16-byte aligned>
+  [Header]                  (16 bytes)
+    Signature                 (4 bytes)
+    Asset Count               (4 bytes)
+    Asset Capacity            (4 bytes)
+    Reserved                  (4 bytes)
+  [Ctrl]                    ([Asset Count] bytes) <16-byte aligned>
+    Ctrl Block                (1 byte)
+  ...
+  [Node]                    ([40 x Asset Capacity] bytes)
+    Name                      (32 bytes)
+    Data Chunk Offset         (8 bytes)
+  ...
