@@ -34,7 +34,7 @@ public:
 	void pop();
 	int size() const;
 	QString groupName() const;
-	QString error() const;
+	QString getErrorMessage() const;
 	void assign(std::vector<AssetDescriptorTexture*>&& assets);
 	TextureGroupEntry entry(const QString& name) const;
 
@@ -60,7 +60,7 @@ private:
 	int m_pageSize;
 	QString m_groupName;
 	QImage::Format m_format;
-	QString m_errorString = "";
+	QString m_errorMessage = "";
 	std::vector<AssetDescriptorTexture*> m_assets;
 	std::unordered_map<QString, TextureGroupEntry> m_entries;
 };

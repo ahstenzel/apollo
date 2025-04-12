@@ -35,7 +35,13 @@ void populateInfoMap();
 /// <returns>Asset string</returns>
 template<typename... Args>
 inline QString buildAssetString(QStringList tokens, Args&&... args) {
-	return tokens.join(g_assetDelim).arg(std::forward<Args>(args)...);
+	QString str = tokens.join(g_assetDelim);
+	int i = 0;
+	([&] {
+		str = str.arg(args);
+		++i;
+	} (), ...);
+	return str;
 }
 
 /// <summary>
@@ -194,15 +200,42 @@ public:
 	int getHeight() const;
 
 	/// <summary>
+	/// Struct containing data for animating a texture.
+	/// </summary>
+	struct AnimationData {
+		int m_frameCount = 1;
+		int m_framesPerRow = 1;
+		int m_offsetX = 0;
+		int m_offsetY = 0;
+		int m_rows = 1;
+		int m_spacingX = 0;
+		int m_spacingY = 0;
+	};
+
+	/// <summary>
+	/// Get the data for how to animate the texture.
+	/// </summary>
+	/// <returns>Animation data</returns>
+	AnimationData getAnimationData() const;
+
+	/// <summary>
+	/// Set the data for how to animate the texture.
+	/// </summary>
+	/// <param name="data">Animation data</param>
+	void setAnimationData(const AnimationData& data);
+
+	/// <summary>
 	/// Construct a new texture asset descriptor.
 	/// </summary>
 	/// <returns>Asset descriptor pointer</returns>
 	static AssetDescriptorPtr factory();
+
 private:
 	QString m_filename = "";
 	int m_textureGroupIndex = 0;
 	int m_width = -1;
 	int m_height = -1;
+	AnimationData m_animationData;
 
 	void updateSize();
 };
@@ -498,24 +531,54 @@ public:
 	AssetEditor(QWidget* parent = nullptr);
 	~AssetEditor();
 
-	virtual void showEvent(QShowEvent* ev);
 	QModelIndex index() const;
 	void setIndex(const QModelIndex& index);
 	virtual QSize sizeHint() const;
 
 public slots:
 	void onChanged_Index(const QModelIndex& current, const QModelIndex& previous);
-	void onChanged_ComboBox_TextureGroups(int index);
+	void onChanged_Asset();
 
 signals:
 	void assetsChanged();
 
 private:
 	QGroupBox* m_groupBox_Contents;
-	QGridLayout* m_layout_Contents;
+	QVBoxLayout* m_layout_Contents;
+	QGroupBox* m_groupBox_Editor;
+
 	QModelIndex m_index;
+	bool m_ignoreWidgetChanges = false;
+};
 
-	bool m_ignoreWidgetChanges;
+/// <summary>
+/// Subwidget for editing texture properties.
+/// </summary>
+class AssetEditorTexture : public QGroupBox {
+	Q_OBJECT
+public:
+	AssetEditorTexture(AssetDescriptorTexture* texture, QWidget* parent = nullptr);
+	~AssetEditorTexture();
 
-	QComboBox* m_comboBox_textureGroups;
+	virtual void showEvent(QShowEvent* ev);
+
+public slots:
+	void onChanged_ComboBox_TextureGroups(int index);
+	void onChanged_AnimationData(int value);
+
+signals:
+	void assetsChanged();
+
+private:
+	bool m_ignoreWidgetChanges = false;
+	AssetDescriptorTexture* m_texture;
+	QGridLayout* m_layout;
+	QComboBox* m_comboBox_TextureGroups;
+	QSpinBox* m_spinBox_Ani_FrameCount;
+	QSpinBox* m_spinBox_Ani_FramesPerRow;
+	QSpinBox* m_spinBox_Ani_OffsetX;
+	QSpinBox* m_spinBox_Ani_OffsetY;
+	QSpinBox* m_spinBox_Ani_Rows;
+	QSpinBox* m_spinBox_Ani_SpacingX;
+	QSpinBox* m_spinBox_Ani_SpacingY;
 };

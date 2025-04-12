@@ -145,8 +145,10 @@ public:
 	bool isEmpty() const;
 	QByteArray toBytes();
 	uint64_t getAssetOffset(const QString& name);
+	QString getErrorMessage() const;
 
 private:
+	QString m_errorMessage = "";
 	bool m_dirty = true;
 	std::vector<AssetDescriptorPtr> m_assets;
 	std::vector<TextureGroupBuilder>* m_textureGroups;

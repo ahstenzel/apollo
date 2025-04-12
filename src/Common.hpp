@@ -75,6 +75,7 @@
 #include <QListView>
 #include <QStringListModel>
 #include <QImageReader>
+#include <QSpinBox>
 
 // External libraries
 #define LZ4_HEAPMODE 1

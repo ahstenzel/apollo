@@ -393,7 +393,7 @@ bool ProjectWidget::generate(const QString& filename) {
 		for (auto& textureGroup : textureGroups) {
 			QImage textureGroupImage = textureGroup.generateImage();
 			if (textureGroupImage.isNull()) {
-				throw std::exception(textureGroup.error().toStdString().c_str());
+				throw std::exception(textureGroup.getErrorMessage().toStdString().c_str());
 			}
 			textureGroupImages.push_back(std::make_pair(textureGroup.groupName(), textureGroupImage));
 
@@ -432,7 +432,11 @@ bool ProjectWidget::generate(const QString& filename) {
 		for (auto& descriptor : descriptorList) {
 			sectionAssetData.insert(descriptor);
 		}
-		bytes.append(sectionAssetData.toBytes());
+		QByteArray sectionAssetBytes = sectionAssetData.toBytes();
+		if (sectionAssetBytes.isEmpty()) {
+			throw std::exception(sectionAssetData.getErrorMessage().toStdString().c_str());
+		}
+		bytes.append(sectionAssetBytes);
 
 		// Write asset table
 		byteArraySetInt64(&bytes, 56u, (uint64_t)bytes.size());

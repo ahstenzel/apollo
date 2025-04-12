@@ -41,8 +41,8 @@ QString TextureGroupBuilder::groupName() const {
 	return m_groupName;
 }
 
-QString TextureGroupBuilder::error() const {
-	return m_errorString;
+QString TextureGroupBuilder::getErrorMessage() const {
+	return m_errorMessage;
 }
 
 void TextureGroupBuilder::assign(std::vector<AssetDescriptorTexture*>&& assets) {
@@ -98,7 +98,7 @@ std::vector<AssetDescriptorTexture*> TextureGroupBuilder::buildGroup() {
 }
 
 QImage TextureGroupBuilder::generateImage() {
-	m_errorString.clear();
+	m_errorMessage.clear();
 	try {
 		QImage finalTexture(m_pageSize, m_pageSize, m_format);
 		finalTexture.fill(QColor(0, 0, 0, 0));
@@ -119,7 +119,7 @@ QImage TextureGroupBuilder::generateImage() {
 		return finalTexture;
 	}
 	catch (std::exception& e) {
-		m_errorString = QString(e.what());
+		m_errorMessage = QString(e.what());
 		return QImage();
 	}
 }
