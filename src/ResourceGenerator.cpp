@@ -64,13 +64,16 @@ void ResourceSectionTextureGroup::insert(const QString& name, const QImage& imag
 	byteArrayPushInt64(&block, (uint64_t)uncompressedSize);		// Uncompressed size
 	byteArrayPushInt64(&block, (uint64_t)compressedSize);		// Compressed size
 	byteArrayPushInt32(&block, crc);							// CRC
-	byteArrayAlign(&block, APOLLO_ARC_ALIGN);					// Reserved
+	byteArrayPushInt32(&block, (uint32_t)image.format());		// Format
+	byteArrayPushInt32(&block, (uint32_t)image.width());		// Width
+	byteArrayPushInt32(&block, (uint32_t)image.height());		// Height
+	byteArrayAlign(&block, APOLLO_ARC_ALIGN);
 	block.push_back(imageData);									// Data block
 	byteArrayAlign(&block, APOLLO_ARC_ALIGN);
 
 	// Add to buffer
 	m_imageData.push_back(block);
-	m_stride = std::max(m_stride, (uint64_t)imageData.size());
+	m_stride = std::max(m_stride, (uint64_t)block.size());
 	m_dirty = true;
 	if (compressed) {
 		delete[] compressedBuffer;
@@ -125,6 +128,8 @@ ResourceSectionAssetTable::ResourceSectionAssetTable(ResourceSectionAssetTable&&
 		m_ctrl[i] = std::move(other.m_ctrl[i]);
 		m_nodes[i] = std::move(other.m_nodes[i]);
 	}
+	other.m_ctrl = nullptr;
+	other.m_nodes = nullptr;
 }
 
 ResourceSectionAssetTable::ResourceSectionAssetTable(const ResourceSectionAssetTable& other) {
@@ -190,7 +195,7 @@ void ResourceSectionAssetTable::insert(char* name, std::size_t len, AssetElement
 			node->data = data;
 
 			// Save lower bits of hash to the control block
-			AssetHashType low = h2(h);
+			AssetHashType low = h2(h) | 0x80;
 			memcpy_s(ctrl, 1, &low, 1);
 			break;
 		}

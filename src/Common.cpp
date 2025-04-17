@@ -237,7 +237,11 @@ void byteArraySetStr(QByteArray* array, qsizetype idx, const char* str, qsizetyp
 }
 
 void byteArrayAlign(QByteArray* array, qsizetype alignTo) {
-	while (array->size() % alignTo != 0) {
-		array->push_back((char)(0xFF));
+	// PKCS#7 padding
+	if (array->size() % alignTo != 0) {
+		qsizetype diff = alignTo - (array->size() % alignTo);
+		for (qsizetype i = 0; i < diff; ++i) {
+			array->push_back((char)(diff));
+		}
 	}
 }

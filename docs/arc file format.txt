@@ -1,14 +1,17 @@
-[Header]                  (64 bytes)
+[Header]                  (80 bytes)
   Signature                 (4 bytes)
   Version                   (4 bytes)
     Major                     (1 byte)
     Minor                     (1 byte)
     Patch                     (1 byte)
     Reserved                  (1 byte)
+  CRC32                     (4 bytes)
+  Reserved                  (4 bytes)
   AES IV                    (32 bytes)
   Texture Group Offset      (8 bytes)
   First Data Chunk Offset   (8 bytes)
   Asset Table Offset        (8 bytes)
+  Reserved                  (8 bytes)
 
 [Texture Groups]          (x bytes) <16-byte aligned>
   [Header]                  (16 bytes)
@@ -21,7 +24,9 @@
       Uncompressed Size         (8 bytes)
       Compressed Size           (8 bytes)
       CRC32                     (4 bytes)
-      Reserved                  (12 bytes)
+      Format                    (4 bytes) (NOTE: Uses SDL3 pixel format values)
+      Width                     (4 bytes)
+      Height                    (4 bytes)
     [Data]                    (x bytes) <16-byte aligned>
       Data                      (x bytes)
   ...
@@ -46,10 +51,64 @@
     Asset Count               (4 bytes)
     Asset Capacity            (4 bytes)
     Reserved                  (4 bytes)
-  [Ctrl]                    ([Asset Count] bytes) <16-byte aligned>
+  [Ctrl]                    ([Asset Capacity] bytes) <16-byte aligned>
     Ctrl Block                (1 byte)
   ...
-  [Node]                    ([40 x Asset Capacity] bytes)
+  [Buckets]                 ([40 x Asset Capacity] bytes)
     Name                      (32 bytes)
     Data Chunk Offset         (8 bytes)
   ...
+
+[Data Layout: Asset Table]
+Uses a modified Swiss Table layout. The principle of Swiss Tables is that once a key is 
+hashed, the lower bits are seperated .and saved in a Control Block in order to accelerate
+search & insert operations. The Control Block is an array of bytes, with one byte per 
+bucket.
+Asset names are hashed with the following pseudocode:
+```
+uint32_t hash(char* name, size_t len) {
+  uint32_t hash = 16777619;
+  uint32_t mask = 0xF;
+  for (size_t i = 0; i < len; ++i) {
+    hash = (hash << 4) + (uint32_t)name[i];
+    AssetHashType g = hash & mask;
+    if (g != 0) hash ^= g;
+    hash &= ~g;
+  }
+  return hash;
+}
+```
+Hash keys are split into upper & lower parts (h1 & h2) with the following pseudocode:
+```
+uint32_t h1(uint32_t h) { return h >> 7; }
+uint32_t h2(uint32_t h) { return h & 0x7F; }
+```
+Then, the initial bucket for an element at is calculated as (h1 & (capacity - 1)).
+
+When inserting, linear probing is then used to find the first empty bucket. h2 is saved 
+as the byte in the Control Block at the corresponding final bucket, and the uppermost 
+bit is set to 1.
+
+When searching for a key, instead of scanning the whole list of buckets, you can just 
+search the Control Block first. If the first bit is unset, then you know the corresponding
+bucket is empty & you can check the next one. If it is set, you can check if the lower 7
+bits of the Control Byte match the lower 7 bits of the hash value youre searching for. If
+it does, then (and only then) do you go to the corresponding bucket and check for sure if
+the key matches. The benefit to this approach is that the Control Bytes are so small that
+much more of them can stay cache resident at once, and you only jump to the bucket list 
+when youre reasonably sure you already have a match. You can also accellerate the checking
+of Control Bytes further with SIMD operations to check multiple bytes at once.
+
+[Data Layout: Texture Assets] (48 bytes)
+  Texture Group Index           (4 bytes)
+  Texture Group X Offset        (4 bytes)
+  Texture Group Y Offset        (4 bytes)
+  Width                         (4 bytes)
+  Height                        (4 bytes)
+  Animation Frame Count         (4 bytes)
+  Animation Frames Per Row      (4 bytes)
+  Animation Rows                (4 bytes)
+  Animation X Offset            (4 bytes)
+  Animation Y Offset            (4 bytes)
+  Animation X Spacing           (4 bytes)
+  Animation Y Spacing           (4 bytes)

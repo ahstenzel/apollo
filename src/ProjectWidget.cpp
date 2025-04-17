@@ -403,23 +403,36 @@ bool ProjectWidget::generate(const QString& filename) {
 		}
 
 		// Write header
+		qsizetype posCRCOffset = 0;
+		qsizetype posCypherBufferOffset = 0;
+		qsizetype posTextureGroupOffset = 0;
+		qsizetype posDataChunkOffset = 0;
+		qsizetype posAssetTableOffset = 0;
 		QByteArray bytes;
 		byteArrayPushStr(&bytes, "ARCF", 4);             // Signature
 		byteArrayPushInt8(&bytes, APOLLO_VERSION_MAJOR); // Version (major)
 		byteArrayPushInt8(&bytes, APOLLO_VERSION_MINOR); // Version (minor)
 		byteArrayPushInt8(&bytes, APOLLO_VERSION_PATCH); // Version (patch)
 		byteArrayPushInt8(&bytes, 0u);                   // (Reserved)
+		posCRCOffset = bytes.size();
+		byteArrayPushInt32(&bytes, 0u);                  // CRC32
+		byteArrayPushInt32(&bytes, 0u);                  // (Reserved)
 		byteArrayPushInt64(&bytes, 0u);                  // Cypher IV
 		byteArrayPushInt64(&bytes, 0u);                  // ...
 		byteArrayPushInt64(&bytes, 0u);                  // ...
 		byteArrayPushInt64(&bytes, 0u);                  // ...
+		posCypherBufferOffset = bytes.size();
+		posTextureGroupOffset = bytes.size();
 		byteArrayPushInt64(&bytes, 0u);                  // Texture groups offset
+		posDataChunkOffset = bytes.size();
 		byteArrayPushInt64(&bytes, 0u);                  // First data chunk offset
+		posAssetTableOffset = bytes.size();
 		byteArrayPushInt64(&bytes, 0u);                  // Asset table offset
+		byteArrayPushInt64(&bytes, 0u);                  // (Reserved)
 		byteArrayAlign(&bytes, APOLLO_ARC_ALIGN);
 
 		// Write texture pages
-		byteArraySetInt64(&bytes, 40u, (uint64_t)bytes.size());
+		byteArraySetInt64(&bytes, posTextureGroupOffset, (uint64_t)bytes.size());
 		ResourceSectionTextureGroup sectionTextureGroup(textureGroupImages.size());
 		for (auto& textureGroupImage : textureGroupImages) {
 			sectionTextureGroup.insert(textureGroupImage.first, textureGroupImage.second);
@@ -427,7 +440,8 @@ bool ProjectWidget::generate(const QString& filename) {
 		bytes.append(sectionTextureGroup.toBytes());
 
 		// Write data chunk
-		byteArraySetInt64(&bytes, 48u, (uint64_t)bytes.size());
+		uint64_t dataChunkOffset = (uint64_t)bytes.size();
+		byteArraySetInt64(&bytes, posDataChunkOffset, dataChunkOffset);
 		ResourceSectionAssetData sectionAssetData(descriptorList.size(), &textureGroups);
 		for (auto& descriptor : descriptorList) {
 			sectionAssetData.insert(descriptor);
@@ -439,16 +453,20 @@ bool ProjectWidget::generate(const QString& filename) {
 		bytes.append(sectionAssetBytes);
 
 		// Write asset table
-		byteArraySetInt64(&bytes, 56u, (uint64_t)bytes.size());
+		byteArraySetInt64(&bytes, posAssetTableOffset, (uint64_t)bytes.size());
 		ResourceSectionAssetTable sectionAssetTable(descriptorList.size());
 		for (auto& descriptor : descriptorList) {
 			QString assetName = descriptor->name();
 			std::uint64_t assetOffset = sectionAssetData.getAssetOffset(assetName);
 			if (assetOffset < std::numeric_limits<std::uint64_t>::max()) {
-				sectionAssetTable.insert(assetName.toStdString().data(), assetName.size(), assetOffset);
+				sectionAssetTable.insert(assetName.toStdString().data(), assetName.size(), dataChunkOffset + assetOffset);
 			}
 		}
 		bytes.append(sectionAssetTable.toBytes());
+
+		// Calculate full file crc
+		uint32_t fileCRC = crc32Calculate(bytes.data() + posCypherBufferOffset, bytes.size() - posCypherBufferOffset);
+		byteArraySetInt32(&bytes, posCRCOffset, fileCRC);
 
 		// Encrypt contents
 		if (m_checkBox_Info_UseEncryption->isChecked()) {
@@ -467,12 +485,11 @@ bool ProjectWidget::generate(const QString& filename) {
 			QString ivString((char*)(&iv[0]));
 
 			// Encrypt buffer
-			size_t encryptionOffset = 40;
-			uint8_t* buf = (uint8_t*)bytes.data() + encryptionOffset;
+			uint8_t* buf = (uint8_t*)bytes.data() + posCypherBufferOffset;
 			AES_ctx ctx;
 			AES_init_ctx_iv(&ctx, &key[0], &iv[0]);
-			AES_CBC_encrypt_buffer(&ctx, buf, bytes.length() - encryptionOffset);
-			byteArraySetStr(&bytes, encryptionOffset - sizeof(iv), ivString, sizeof(iv));
+			AES_CBC_encrypt_buffer(&ctx, buf, bytes.length() - posCypherBufferOffset);
+			byteArraySetStr(&bytes, posCypherBufferOffset - sizeof(iv), ivString, sizeof(iv));
 		}
 
 		// Write file
