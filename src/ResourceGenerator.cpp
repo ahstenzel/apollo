@@ -64,7 +64,7 @@ void ResourceSectionTextureGroup::insert(const QString& name, const QImage& imag
 	byteArrayPushInt64(&block, (uint64_t)uncompressedSize);		// Uncompressed size
 	byteArrayPushInt64(&block, (uint64_t)compressedSize);		// Compressed size
 	byteArrayPushInt32(&block, crc);							// CRC
-	byteArrayPushInt32(&block, (uint32_t)image.format());		// Format
+	byteArrayPushInt32(&block, imageFormatSDL(image.format()));	// Format
 	byteArrayPushInt32(&block, (uint32_t)image.width());		// Width
 	byteArrayPushInt32(&block, (uint32_t)image.height());		// Height
 	byteArrayAlign(&block, APOLLO_ARC_ALIGN);

@@ -13,9 +13,72 @@
 
 #define APOLLO_ARC_ALIGN 16
 
+enum SDL_PixelType {
+    SDL_PIXELTYPE_UNKNOWN,
+    SDL_PIXELTYPE_INDEX1,
+    SDL_PIXELTYPE_INDEX4,
+    SDL_PIXELTYPE_INDEX8,
+    SDL_PIXELTYPE_PACKED8,
+    SDL_PIXELTYPE_PACKED16,
+    SDL_PIXELTYPE_PACKED32,
+    SDL_PIXELTYPE_ARRAYU8,
+    SDL_PIXELTYPE_ARRAYU16,
+    SDL_PIXELTYPE_ARRAYU32,
+    SDL_PIXELTYPE_ARRAYF16,
+    SDL_PIXELTYPE_ARRAYF32,
+    /* appended at the end for compatibility with sdl2-compat:  */
+    SDL_PIXELTYPE_INDEX2
+};
+
+enum SDL_BitmapOrder {
+    SDL_BITMAPORDER_NONE,
+    SDL_BITMAPORDER_4321,
+    SDL_BITMAPORDER_1234
+};
+
+enum SDL_PackedOrder {
+    SDL_PACKEDORDER_NONE,
+    SDL_PACKEDORDER_XRGB,
+    SDL_PACKEDORDER_RGBX,
+    SDL_PACKEDORDER_ARGB,
+    SDL_PACKEDORDER_RGBA,
+    SDL_PACKEDORDER_XBGR,
+    SDL_PACKEDORDER_BGRX,
+    SDL_PACKEDORDER_ABGR,
+    SDL_PACKEDORDER_BGRA
+};
+
+enum SDL_ArrayOrder {
+    SDL_ARRAYORDER_NONE,
+    SDL_ARRAYORDER_RGB,
+    SDL_ARRAYORDER_RGBA,
+    SDL_ARRAYORDER_ARGB,
+    SDL_ARRAYORDER_BGR,
+    SDL_ARRAYORDER_BGRA,
+    SDL_ARRAYORDER_ABGR
+};
+
+enum SDL_PackedLayout {
+    SDL_PACKEDLAYOUT_NONE,
+    SDL_PACKEDLAYOUT_332,
+    SDL_PACKEDLAYOUT_4444,
+    SDL_PACKEDLAYOUT_1555,
+    SDL_PACKEDLAYOUT_5551,
+    SDL_PACKEDLAYOUT_565,
+    SDL_PACKEDLAYOUT_8888,
+    SDL_PACKEDLAYOUT_2101010,
+    SDL_PACKEDLAYOUT_1010102
+};
+
+#define SDL_DEFINE_PIXELFORMAT(type, order, layout, bits, bytes) \
+    ((1 << 28) | ((type) << 24) | ((order) << 20) | \
+    ((layout) << 16) | ((bits) << 8) | ((bytes) << 0))
+
 // ============================================================================ Includes
 
 // Standard libraries
+#include <cstdlib> 
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <algorithm>
@@ -27,13 +90,19 @@
 #include <stack>
 
 // Qt libraries
+#include <QApplication>
 #include <QWidget>
+
 #include <QMainWindow>
 #include <QGroupBox>
 #include <QScrollArea>
-#include <QTreeView>
-#include <QItemDelegate>
 #include <QTabWidget>
+#include <QSplitter>
+#include <QStackedWidget>
+
+#include <QMessageBox>
+#include <QFileDialog>
+
 #include <QPushButton>
 #include <QButtonGroup>
 #include <QDialogButtonBox>
@@ -41,41 +110,45 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
-#include <QStackedWidget>
+#include <QToolButton>
+#include <QSpinBox>
 #include <QMenu>
 #include <QMenuBar>
-#include <QAction>
-#include <QToolButton>
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
-#include <QSplitter>
+
+#include <QAction>
 #include <QEvent>
 #include <QMouseEvent>
+
+#include <QListView>
+#include <QTreeView>
+#include <QStringListModel>
+#include <QItemDelegate>
 #include <QStyledItemDelegate>
-#include <QRegularExpression>
-#include <QRegularExpressionValidator>
-#include <QFileDialog>
+#include <QMimeData>
+
 #include <QFile>
 #include <QFileInfo>
 #include <QDomDocument>
 #include <QXMLStreamWriter>
 #include <QXMLStreamReader>
+#include <QPainter>
+#include <QImageReader>
+
 #include <QVariant>
 #include <QVariantList>
 #include <QVector>
 #include <QStack>
 #include <QList>
 #include <QException>
-#include <QMimeData>
-#include <QApplication>
-#include <QObjectCleanupHandler>
-#include <QPainter>
-#include <QListView>
-#include <QStringListModel>
-#include <QImageReader>
-#include <QSpinBox>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+
+
+
 
 // External libraries
 #define LZ4_HEAPMODE 1
@@ -127,6 +200,13 @@ extern const std::uint32_t crc32Lookup[256];
 /// <param name="format">QImage format</param>
 /// <returns>Description string</returns>
 QString imageFormatString(QImage::Format format);
+
+/// <summary>
+/// Convert the Qt image format enum to an SDL3 format number.
+/// </summary>
+/// <param name="format">QImage format</param>
+/// <returns>SDL format</returns>
+uint32_t imageFormatSDL(QImage::Format format);
 
 /// <summary>
 /// Get the base name (no increment number) of the texture group.

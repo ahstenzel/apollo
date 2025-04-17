@@ -114,6 +114,24 @@ QString imageFormatString(QImage::Format format) {
 	};
 }
 
+uint32_t imageFormatSDL(QImage::Format format) {
+	switch (format) {
+	case QImage::Format_Mono:        return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX1, SDL_BITMAPORDER_1234, 0, 1, 0); break;
+	case QImage::Format_MonoLSB:     return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX1, SDL_BITMAPORDER_4321, 0, 1, 0); break;
+	case QImage::Format_Indexed8:    return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX8, 0, 0, 8, 1); break;
+	case QImage::Format_ARGB32:      return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ARGB, SDL_PACKEDLAYOUT_8888, 32, 4); break;
+	case QImage::Format_RGBX8888:    return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_RGBX, SDL_PACKEDLAYOUT_8888, 32, 4); break;
+	case QImage::Format_RGBA8888:    return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_RGBA, SDL_PACKEDLAYOUT_8888, 32, 4); break;
+	case QImage::Format_RGBX64:      return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYU16, SDL_ARRAYORDER_RGBA, 0, 64, 8); break;
+	case QImage::Format_RGBA64:      return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYU16, SDL_ARRAYORDER_RGBA, 0, 64, 8); break;
+	case QImage::Format_RGBX16FPx4:  return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYF16, SDL_ARRAYORDER_RGBA, 0, 64, 8); break;
+	case QImage::Format_RGBA16FPx4:  return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYF16, SDL_ARRAYORDER_RGBA, 0, 64, 8); break;
+	case QImage::Format_RGBX32FPx4:  return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYF32, SDL_ARRAYORDER_RGBA, 0, 128, 16); break;
+	case QImage::Format_RGBA32FPx4:  return SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYF32, SDL_ARRAYORDER_RGBA, 0, 128, 16); break;
+	default: return 0; break;
+	};
+}
+
 QString textureGroupNameBase(const QString& name) {
 	QRegularExpression regex("(\\w+)(_)(\\d+)$");
 	auto match = regex.match(name);
@@ -240,8 +258,9 @@ void byteArrayAlign(QByteArray* array, qsizetype alignTo) {
 	// PKCS#7 padding
 	if (array->size() % alignTo != 0) {
 		qsizetype diff = alignTo - (array->size() % alignTo);
+		uint64_t fill = std::min(0xFFULL, (uint64_t)diff);
 		for (qsizetype i = 0; i < diff; ++i) {
-			array->push_back((char)(diff));
+			array->push_back((char)(fill));
 		}
 	}
 }
