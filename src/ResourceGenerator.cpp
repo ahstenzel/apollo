@@ -191,7 +191,7 @@ void ResourceSectionAssetTable::insert(char* name, std::size_t len, AssetElement
 		if (ctrlIsEmpty(*ctrl)) {
 			// Deep copy hash key & data
 			AssetNode* node = &m_nodes[pos];
-			strncpy_s(node->name, name, len);
+			strncpy_s(&node->name[0], sizeof(node->name), name, len);
 			node->data = data;
 
 			// Save lower bits of hash to the control block
@@ -257,7 +257,7 @@ void ResourceSectionAssetTable::resize(std::size_t newCapacity) {
 	}
 
 	// Zero out new buffers
-	memset(newCtrl, 0x80, sizeof(*newCtrl) * newCapacity);
+	memset(newCtrl, 0, sizeof(*newCtrl) * newCapacity);
 	memset(newNodes, 0, sizeof(*newNodes) * newCapacity);
 
 	// Overwrite old buffers

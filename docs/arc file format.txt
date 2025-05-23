@@ -61,7 +61,7 @@
 
 [Data Layout: Asset Table]
 Uses a modified Swiss Table layout. The principle of Swiss Tables is that once a key is 
-hashed, the lower bits are seperated .and saved in a Control Block in order to accelerate
+hashed, the lower bits are seperated and saved in a Control Block in order to accelerate
 search & insert operations. The Control Block is an array of bytes, with one byte per 
 bucket.
 Asset names are hashed with the following pseudocode:

@@ -74,7 +74,7 @@ private:
 		return h & 0x7F;
 	}
 	static inline bool ctrlIsEmpty(std::uint8_t h) {
-		return h & 0x80;
+		return !(h & 0x80);
 	}
 	
 	/// <summary>
