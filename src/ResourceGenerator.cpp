@@ -430,6 +430,8 @@ QByteArray ResourceSectionAssetData::toBytes() {
 					byteArrayPushInt32(&assetBytes, uint32_t(animationData.m_offsetY));
 					byteArrayPushInt32(&assetBytes, uint32_t(animationData.m_spacingX));
 					byteArrayPushInt32(&assetBytes, uint32_t(animationData.m_spacingY));
+					byteArrayPushInt32(&assetBytes, uint32_t(entry.m_texture->getOriginX()));
+					byteArrayPushInt32(&assetBytes, uint32_t(entry.m_texture->getOriginY()));
 					byteArrayAlign(&assetBytes, APOLLO_ARC_ALIGN);
 
 					// Calculate CRC

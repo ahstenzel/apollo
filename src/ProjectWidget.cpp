@@ -155,11 +155,30 @@ bool ProjectWidget::load(const QString& filename) {
 
 		// Verify contents
 		QDomElement elemRoot = doc.documentElement();
-		if (!versionStringMatch(elemRoot.attribute("version"), APOLLO_VERSION_STR)) {
-			throw std::exception("Version string mismatch");
-		}
 		if (elemRoot.tagName() != "arp" || doc.doctype().name() != "arp") {
-			throw std::exception("Document is not a valid arp filetype ");
+			throw std::exception("Document is not a valid arp filetype");
+		}
+		bool markDirty = false;
+		int versionCmp = versionStringCompare(elemRoot.attribute("version"), APOLLO_VERSION_STR);
+		if (versionCmp > 0) {
+			throw std::exception("File was made with a later version of Apollo; cannot parse");
+		}
+		else if (versionCmp < 0) {
+			auto reply = QMessageBox::question(
+				this,
+				"Convert Project File",
+				QString("Project file was made with an earlier version of Apollo. It may need to be converted. Continue?"),
+				QMessageBox::Yes | QMessageBox::No
+			);
+			if (reply == QMessageBox::Yes) {
+				if (!convertProjectFile(elemRoot.attribute("version"), APOLLO_VERSION_STR, &elemRoot)) {
+					throw std::exception("Failed to convert project file");
+				}
+				else markDirty = true;
+			}
+			else {
+				throw std::exception("Aborting project file load");
+			}
 		}
 
 		// Get data
@@ -239,7 +258,7 @@ bool ProjectWidget::load(const QString& filename) {
 		m_comboBox_TextureGroupTab_Info_TextureGroup->setCurrentIndex(-1);
 		m_groupBox_TextureGroupTab_ViewGroup->setTextureGroupIndex(-1);
 
-		setDirty(false);
+		setDirty(markDirty);
 
 		return true;
 	}
@@ -563,6 +582,11 @@ void ProjectWidget::setAssetModel(AssetTreeModel* model) {
 	m_scrollArea_AssetTab_AssetEditor->setIndex({});
 }
 
+bool ProjectWidget::convertProjectFile(QString oldVer, QString newVer, QDomElement* rootElem) {
+	// Placeholder for future versions
+	return true;
+}
+
 void ProjectWidget::onCheckStateChanged_CheckBox_UseEncryption(Qt::CheckState state) {
 	m_lineEdit_Info_EncryptionPassword->setEnabled(state == Qt::CheckState::Checked);
 	onDataChanged();
@@ -666,6 +690,7 @@ void ProjectWidget::onFinished_AssetDialog_AddFile(int status) {
 			model->setData(index, asset->toString(), Qt::UserRole);
 			m_treeView_AssetTab_Assets->scrollTo(index);
 			m_treeView_AssetTab_Assets->setCurrentIndex(index);
+			setDirty(true);
 		}
 	}
 	delete m_assetDialog;
@@ -674,20 +699,26 @@ void ProjectWidget::onFinished_AssetDialog_AddFile(int status) {
 
 void ProjectWidget::onFinished_AssetDialog_EditFile(int status) {
 	if (status == QDialog::Accepted && m_assetDialog) {
-		// Check if file already exists
 		AssetTreeModel* model = getAssetModel();
 		AssetDescriptorPtr asset = m_assetDialog->value();
-		if (model->getFile(asset->name()).isValid()) {
-			QMessageBox::warning(this, "Warning", QString("An asset named '%1' already exists!").arg(asset->name()));
-			m_assetDialog->open();
-			return;
-		}
-
-		// Get current asset & modify it
 		QModelIndex index = m_treeView_AssetTab_Assets->selectionModel()->currentIndex();
 		if (index.isValid()) {
+			// Check if you changed the name to something that already exists
 			AssetTreeItem* item = static_cast<AssetTreeItem*>(index.internalPointer());
+			QString currName = item->data(0).toString();
+			if (currName != asset->name() && model->getFile(asset->name()).isValid()) {
+				QMessageBox::warning(this, "Warning", QString("An asset named '%1' already exists!").arg(asset->name()));
+				m_assetDialog->open();
+				return;
+			}
+
+			// Modify current asset
 			item->setData(std::move(asset));
+			m_treeView_AssetTab_Assets->setCurrentIndex(index);
+			setDirty(true);
+		}
+		else {
+			QMessageBox::warning(this, "Warning", QString("Internal error- lost index of current item!"));
 		}
 	}
 	delete m_assetDialog;

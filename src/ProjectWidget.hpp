@@ -34,9 +34,11 @@ private:
 	void setProjectFilename(const QString& filename);
 	QDomElement addElement(QDomDocument& doc, QDomNode& node, const QString& tag, const QString& value = "");
 	void setAssetModel(AssetTreeModel* model);
+	bool convertProjectFile(QString oldVer, QString newVer, QDomElement* rootElem);
 
 	QString m_projectFilename;
 	QString m_errorMessage;
+	QString m_cachePath;
 	bool m_dirtyFlag;
 
 	QVBoxLayout* m_layout_Main;

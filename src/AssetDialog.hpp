@@ -14,7 +14,7 @@
 class AssetDialog : public QDialog {
 	Q_OBJECT;
 public:
-	AssetDialog(QWidget* parent = nullptr);
+	AssetDialog(bool edit = false, QWidget* parent = nullptr);
 	~AssetDialog();
 
 	/// <summary>

@@ -16,6 +16,7 @@ enum class AssetType {
 	Sound,
 	Mesh,
 	Text,
+	Font,
 	Binary,
 };
 
@@ -225,6 +226,30 @@ public:
 	void setAnimationData(const AnimationData& data);
 
 	/// <summary>
+	/// Get the x coordinate of the textures transformation origin.
+	/// </summary>
+	/// <returns></returns>
+	int getOriginX() const;
+
+	/// <summary>
+	/// Set the x coordinate of the textures transformation origin.
+	/// </summary>
+	/// <returns></returns>
+	void setOriginX(int originX);
+
+	/// <summary>
+	/// Get the y coordinate of the textures transformation origin.
+	/// </summary>
+	/// <returns></returns>
+	int getOriginY() const;
+
+	/// <summary>
+	/// Set the y coordinate of the textures transformation origin.
+	/// </summary>
+	/// <returns></returns>
+	void setOriginY(int originY);
+
+	/// <summary>
 	/// Construct a new texture asset descriptor.
 	/// </summary>
 	/// <returns>Asset descriptor pointer</returns>
@@ -235,6 +260,8 @@ private:
 	int m_textureGroupIndex = 0;
 	int m_width = -1;
 	int m_height = -1;
+	int m_originX = -1;
+	int m_originY = -1;
 	AnimationData m_animationData;
 
 	void updateSize();
@@ -338,6 +365,41 @@ public:
 
 	/// <summary>
 	/// Construct a new text asset descriptor.
+	/// </summary>
+	/// <returns>Asset descriptor pointer</returns>
+	static AssetDescriptorPtr factory();
+private:
+	QString m_filename = "";
+};
+
+/// <summary>
+/// Asset descriptor for true type font files.
+/// </summary>
+class AssetDescriptorFont : public AssetDescriptorBase {
+public:
+	AssetDescriptorFont();
+	~AssetDescriptorFont();
+
+	/// <summary>
+	/// Serialize the text asset to a string.
+	/// </summary>
+	/// <returns>Asset string</returns>
+	QString toString() const override;
+
+	/// <summary>
+	/// Deserialzie the text asset from a string.
+	/// </summary>
+	/// <param name="string"></param>
+	void fromString(const QString& string) override;
+
+	/// <summary>
+	/// Get the contents of the binary asset.
+	/// </summary>
+	/// <returns>Byte array</returns>
+	QByteArray toBytes() const override;
+
+	/// <summary>
+	/// Construct a new binary asset descriptor.
 	/// </summary>
 	/// <returns>Asset descriptor pointer</returns>
 	static AssetDescriptorPtr factory();
@@ -564,7 +626,7 @@ public:
 
 public slots:
 	void onChanged_ComboBox_TextureGroups(int index);
-	void onChanged_AnimationData(int value);
+	void onChanged_Data(int value);
 
 signals:
 	void assetsChanged();
@@ -581,4 +643,6 @@ private:
 	QSpinBox* m_spinBox_Ani_Rows;
 	QSpinBox* m_spinBox_Ani_SpacingX;
 	QSpinBox* m_spinBox_Ani_SpacingY;
+	QSpinBox* m_spinBox_OriginX;
+	QSpinBox* m_spinBox_OriginY;
 };

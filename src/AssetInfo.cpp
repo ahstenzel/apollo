@@ -18,6 +18,7 @@ void populateInfoMap() {
 	{ AssetType::Sound,   {&AssetDescriptorSound::factory,   "Sound",   "AWAV", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "mp3", "mp4", "ogg", "wav" }}},
 	{ AssetType::Mesh,    {&AssetDescriptorMesh::factory,    "Mesh",    "AMSH", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "obj", "stl" }}},
 	{ AssetType::Text,    {&AssetDescriptorText::factory,    "Text",    "ATXT", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "txt", "ini", "xml", "json" }}},
+	{ AssetType::Font,    {&AssetDescriptorFont::factory,    "Font",    "AFNT", QApplication::style()->standardIcon(QStyle::SP_FileIcon), { "ttf", "otf" }}},
 	{ AssetType::Binary,  {&AssetDescriptorBinary::factory,  "Binary",  "ABIN", QApplication::style()->standardIcon(QStyle::SP_FileIcon), {} }},
 	};
 }
@@ -86,7 +87,7 @@ AssetDescriptorTexture::AssetDescriptorTexture() {
 AssetDescriptorTexture::~AssetDescriptorTexture() = default;
 
 QString AssetDescriptorTexture::toString() const {
-	return buildAssetString({ "%0", "%1", "%2", "%3", "%4", "%5", "%6", "%7", "%8", "%9", "%10" },
+	return buildAssetString({ "%0", "%1", "%2", "%3", "%4", "%5", "%6", "%7", "%8", "%9", "%10", "%11", "%12" },
 		g_assetInfoMap[m_assetType].m_name,
 		m_name,
 		m_filename,
@@ -97,7 +98,9 @@ QString AssetDescriptorTexture::toString() const {
 		m_animationData.m_offsetY,
 		m_animationData.m_rows,
 		m_animationData.m_spacingX,
-		m_animationData.m_spacingY
+		m_animationData.m_spacingY,
+		m_originX,
+		m_originY
 	);
 }
 
@@ -116,6 +119,8 @@ void AssetDescriptorTexture::fromString(const QString& string) {
 	m_animationData.m_rows =         (list.size() > 8) ? list[8].toInt() : 1;
 	m_animationData.m_spacingX =     (list.size() > 9) ? list[9].toInt() : 0;
 	m_animationData.m_spacingY =     (list.size() > 10) ? list[10].toInt() : 0;
+	m_originX =                      (list.size() > 11) ? list[11].toInt() : 0;
+	m_originY =                      (list.size() > 12) ? list[12].toInt() : 0;
 	updateSize();
 }
 
@@ -166,6 +171,22 @@ AssetDescriptorTexture::AnimationData AssetDescriptorTexture::getAnimationData()
 
 void AssetDescriptorTexture::setAnimationData(const AnimationData& data) {
 	m_animationData = data;
+}
+
+int AssetDescriptorTexture::getOriginX() const {
+	return m_originX;
+}
+
+void AssetDescriptorTexture::setOriginX(int originX) {
+	m_originX = originX;
+}
+
+int AssetDescriptorTexture::getOriginY() const {
+	return m_originY;
+}
+
+void AssetDescriptorTexture::setOriginY(int originY) {
+	m_originY = originY;
 }
 
 AssetDescriptorPtr AssetDescriptorTexture::factory() {
@@ -281,6 +302,43 @@ QByteArray AssetDescriptorText::toBytes() const {
 
 AssetDescriptorPtr AssetDescriptorText::factory() {
 	return std::make_shared<AssetDescriptorText>();
+}
+
+AssetDescriptorFont::AssetDescriptorFont() {
+	m_assetType = AssetType::Font;
+}
+
+AssetDescriptorFont::~AssetDescriptorFont() = default;
+
+QString AssetDescriptorFont::toString() const {
+	return buildAssetString({ "%1", "%2", "%3" },
+		g_assetInfoMap[m_assetType].m_name,
+		m_name,
+		m_filename
+	);
+}
+
+void AssetDescriptorFont::fromString(const QString& string) {
+	QStringList list = string.split(g_assetDelim);
+	if (list.isEmpty() || list[0] != g_assetInfoMap[m_assetType].m_name) {
+		return;
+	}
+	m_name = (list.size() > 1) ? list[1] : "";
+	m_filename = (list.size() > 2) ? list[2] : "";
+}
+
+QByteArray AssetDescriptorFont::toBytes() const {
+	QFile file(m_filename);
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		return QByteArray();
+	}
+	QByteArray bytes = file.readAll();
+	file.close();
+	return bytes;
+}
+
+AssetDescriptorPtr AssetDescriptorFont::factory() {
+	return std::make_shared<AssetDescriptorFont>();
 }
 
 AssetDescriptorBinary::AssetDescriptorBinary() {
@@ -929,6 +987,9 @@ void AssetEditor::setIndex(const QModelIndex& index) {
 		else if (descriptor->assetType() == AssetType::Text) {
 
 		}
+		else if (descriptor->assetType() == AssetType::Font) {
+
+		}
 		else if (descriptor->assetType() == AssetType::Binary) {
 
 		}
@@ -987,6 +1048,8 @@ AssetEditorTexture::AssetEditorTexture(AssetDescriptorTexture* texture, QWidget*
 		m_spinBox_Ani_Rows = nullptr;
 		m_spinBox_Ani_SpacingX = nullptr;
 		m_spinBox_Ani_SpacingY = nullptr;
+		m_spinBox_OriginX = nullptr;
+		m_spinBox_OriginY = nullptr;
 	}
 	else {
 		QImage textureImage(m_texture->filename());
@@ -1006,57 +1069,69 @@ AssetEditorTexture::AssetEditorTexture(AssetDescriptorTexture* texture, QWidget*
 		connect(m_comboBox_TextureGroups, &QComboBox::currentIndexChanged, this, &AssetEditorTexture::onChanged_ComboBox_TextureGroups);
 		m_layout->addWidget(m_comboBox_TextureGroups, 6, 1, Qt::AlignLeft);
 
-		auto animationData = texture->getAnimationData();
-		m_layout->addWidget(new QLabel("Animation: "), 7, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Origin X:"), 7, 0, Qt::AlignRight);
+		m_spinBox_OriginX = new QSpinBox();
+		m_spinBox_OriginX->setValue(m_texture->getOriginX());
+		connect(m_spinBox_OriginX, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_OriginX, 7, 1);
 
-		m_layout->addWidget(new QLabel("Number of Frames: "), 8, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Origin Y:"), 8, 0, Qt::AlignRight);
+		m_spinBox_OriginY = new QSpinBox();
+		m_spinBox_OriginY->setValue(m_texture->getOriginY());
+		connect(m_spinBox_OriginY, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_OriginY, 8, 1);
+
+		auto animationData = texture->getAnimationData();
+		m_layout->addWidget(new QLabel("Animation: "), 9, 0, Qt::AlignRight);
+
+		m_layout->addWidget(new QLabel("Number of Frames: "), 10, 0, Qt::AlignRight);
 		m_spinBox_Ani_FrameCount = new QSpinBox();
 		m_spinBox_Ani_FrameCount->setMinimum(1);
 		m_spinBox_Ani_FrameCount->setValue(animationData.m_frameCount);
-		connect(m_spinBox_Ani_FrameCount, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_FrameCount, 8, 1);
+		connect(m_spinBox_Ani_FrameCount, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_FrameCount, 10, 1);
 
-		m_layout->addWidget(new QLabel("Frames Per Row: "), 9, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Frames Per Row: "), 11, 0, Qt::AlignRight);
 		m_spinBox_Ani_FramesPerRow = new QSpinBox();
 		m_spinBox_Ani_FramesPerRow->setMinimum(1);
 		m_spinBox_Ani_FramesPerRow->setValue(animationData.m_framesPerRow);
-		connect(m_spinBox_Ani_FramesPerRow, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_FramesPerRow, 9, 1);
+		connect(m_spinBox_Ani_FramesPerRow, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_FramesPerRow, 11, 1);
 
-		m_layout->addWidget(new QLabel("Number of Rows:"), 10, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Number of Rows:"), 12, 0, Qt::AlignRight);
 		m_spinBox_Ani_Rows = new QSpinBox();
 		m_spinBox_Ani_Rows->setMinimum(1);
 		m_spinBox_Ani_Rows->setValue(animationData.m_rows);
-		connect(m_spinBox_Ani_Rows, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_Rows, 10, 1);
+		connect(m_spinBox_Ani_Rows, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_Rows, 12, 1);
 
-		m_layout->addWidget(new QLabel("Offset X:"), 11, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Offset X:"), 13, 0, Qt::AlignRight);
 		m_spinBox_Ani_OffsetX = new QSpinBox();
 		m_spinBox_Ani_OffsetX->setMinimum(0);
 		m_spinBox_Ani_OffsetX->setValue(animationData.m_offsetX);
-		connect(m_spinBox_Ani_OffsetX, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_OffsetX, 11, 1);
+		connect(m_spinBox_Ani_OffsetX, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_OffsetX, 13, 1);
 
-		m_layout->addWidget(new QLabel("Offset Y:"), 12, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Offset Y:"), 14, 0, Qt::AlignRight);
 		m_spinBox_Ani_OffsetY = new QSpinBox();
 		m_spinBox_Ani_OffsetY->setMinimum(0);
 		m_spinBox_Ani_OffsetY->setValue(animationData.m_offsetY);
-		connect(m_spinBox_Ani_OffsetY, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_OffsetY, 12, 1);
+		connect(m_spinBox_Ani_OffsetY, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_OffsetY, 14, 1);
 
-		m_layout->addWidget(new QLabel("Spacing X:"), 13, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Spacing X:"), 15, 0, Qt::AlignRight);
 		m_spinBox_Ani_SpacingX = new QSpinBox();
 		m_spinBox_Ani_SpacingX->setMinimum(0);
 		m_spinBox_Ani_SpacingX->setValue(animationData.m_spacingX);
-		connect(m_spinBox_Ani_SpacingX, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_SpacingX, 13, 1);
+		connect(m_spinBox_Ani_SpacingX, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_SpacingX, 15, 1);
 
-		m_layout->addWidget(new QLabel("Spacing Y:"), 14, 0, Qt::AlignRight);
+		m_layout->addWidget(new QLabel("Spacing Y:"), 16, 0, Qt::AlignRight);
 		m_spinBox_Ani_SpacingY = new QSpinBox();
 		m_spinBox_Ani_SpacingY->setMinimum(0);
 		m_spinBox_Ani_SpacingY->setValue(animationData.m_spacingY);
-		connect(m_spinBox_Ani_SpacingY, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_AnimationData);
-		m_layout->addWidget(m_spinBox_Ani_SpacingY, 14, 1);
+		connect(m_spinBox_Ani_SpacingY, &QSpinBox::valueChanged, this, &AssetEditorTexture::onChanged_Data);
+		m_layout->addWidget(m_spinBox_Ani_SpacingY, 16, 1);
 	}
 	m_layout->setRowStretch(m_layout->rowCount(), 1);
 }
@@ -1068,9 +1143,11 @@ AssetEditorTexture::~AssetEditorTexture() {
 void AssetEditorTexture::showEvent(QShowEvent* ev) {
 	// Update item previews
 	m_ignoreWidgetChanges = true;
-	m_comboBox_TextureGroups->clear();
-	m_comboBox_TextureGroups->addItems(g_textureGroups);
-	m_comboBox_TextureGroups->setCurrentIndex(m_texture->textureGroupIndex());
+	if (m_comboBox_TextureGroups) {
+		m_comboBox_TextureGroups->clear();
+		m_comboBox_TextureGroups->addItems(g_textureGroups);
+		m_comboBox_TextureGroups->setCurrentIndex(m_texture->textureGroupIndex());
+	}
 	m_ignoreWidgetChanges = false;
 }
 
@@ -1083,7 +1160,7 @@ void AssetEditorTexture::onChanged_ComboBox_TextureGroups(int index) {
 	}
 }
 
-void AssetEditorTexture::onChanged_AnimationData(int value) {
+void AssetEditorTexture::onChanged_Data(int value) {
 	AssetDescriptorTexture::AnimationData animationData;
 	if (m_spinBox_Ani_FrameCount) animationData.m_frameCount = m_spinBox_Ani_FrameCount->value();
 	if (m_spinBox_Ani_FramesPerRow) animationData.m_framesPerRow = m_spinBox_Ani_FramesPerRow->value();
@@ -1093,5 +1170,7 @@ void AssetEditorTexture::onChanged_AnimationData(int value) {
 	if (m_spinBox_Ani_SpacingX) animationData.m_spacingX = m_spinBox_Ani_SpacingX->value();
 	if (m_spinBox_Ani_SpacingY) animationData.m_spacingY = m_spinBox_Ani_SpacingY->value();
 	m_texture->setAnimationData(animationData);
+	if (m_spinBox_OriginX) m_texture->setOriginX(m_spinBox_OriginX->value());
+	if (m_spinBox_OriginY) m_texture->setOriginY(m_spinBox_OriginY->value());
 	emit assetsChanged();
 }

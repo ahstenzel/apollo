@@ -99,7 +99,7 @@ much more of them can stay cache resident at once, and you only jump to the buck
 when youre reasonably sure you already have a match. You can also accellerate the checking
 of Control Bytes further with SIMD operations to check multiple bytes at once.
 
-[Data Layout: Texture Assets] (48 bytes)
+[Data Layout: Texture Assets] (56 bytes)
   Texture Group Index           (4 bytes)
   Texture Group X Offset        (4 bytes)
   Texture Group Y Offset        (4 bytes)
@@ -112,3 +112,5 @@ of Control Bytes further with SIMD operations to check multiple bytes at once.
   Animation Y Offset            (4 bytes)
   Animation X Spacing           (4 bytes)
   Animation Y Spacing           (4 bytes)
+  Offset X                      (4 bytes)
+  Offset Y                      (4 bytes)

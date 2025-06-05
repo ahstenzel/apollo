@@ -158,6 +158,10 @@ enum SDL_PackedLayout {
 #define CTR 0
 #include "aes.h"
 
+// ============================================================================ Global variables
+
+extern QString g_dialogPathCache;
+
 // ============================================================================ Helper functions
 
 /// <summary>
@@ -168,6 +172,15 @@ enum SDL_PackedLayout {
 /// <param name="exact">Require patch revision to match as well</param>
 /// <returns>True if correct revisions match</returns>
 bool versionStringMatch(QString v1, QString v2, bool exact = false);
+
+/// <summary>
+/// Compare the two version strings. If 'exact' is false, only check the major & minor revisions.
+/// </summary>
+/// <param name="v1">Version string 1</param>
+/// <param name="v2">Version string 2</param>
+/// <param name="exact">Compare patch revision as well</param>
+/// <returns>0 if they are equal, >0 if v1 > v2, <0 if v1 < v2</returns>
+int versionStringCompare(QString v1, QString v2, bool exact = false);
 
 /// <summary>
 /// Generate a random printable character.

@@ -1,5 +1,7 @@
 #include "Common.hpp"
 
+QString g_dialogPathCache = ".";
+
 bool versionStringMatch(QString v1, QString v2, bool exact) {
 	QStringList rev1 = v1.split(".");
 	QStringList rev2 = v2.split(".");
@@ -8,6 +10,23 @@ bool versionStringMatch(QString v1, QString v2, bool exact) {
 	if (rev1[1] != rev1[1]) return false;
 	if (exact && rev1[2] != rev2[2]) return false;
 	return true;
+}
+
+int versionStringCompare(QString v1, QString v2, bool exact) {
+	QStringList rev1 = v1.split(".");
+	QStringList rev2 = v2.split(".");
+	if (rev1.length() < 3 || rev2.length() < 3) return 0;
+	if (rev1[0].toInt() > rev2[0].toInt()) return 1;
+	else if (rev1[0].toInt() < rev2[0].toInt()) return -1;
+	else {
+		if (rev1[1].toInt() > rev2[1].toInt()) return 1;
+		else if (rev1[1].toInt() < rev2[1].toInt()) return -1;
+		else if (exact) {
+			if (rev1[2].toInt() > rev2[2].toInt()) return 1;
+			else if (rev1[2].toInt() < rev2[2].toInt()) return -1;
+		}
+	}
+	return 0;
 }
 
 char randChar() {

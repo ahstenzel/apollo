@@ -1,10 +1,11 @@
 #include "AssetDialog.hpp"
 
-AssetDialog::AssetDialog(QWidget* parent) :
+AssetDialog::AssetDialog(bool edit, QWidget* parent) :
 	QDialog(parent) {
 	m_layout = new QFormLayout();
 	setLayout(m_layout);
-	setWindowTitle("Add Asset");
+	if (edit) setWindowTitle("Edit Asset");
+	else setWindowTitle("Add Asset");
 
 	m_lineEdit_Filename = new BrowseLineEdit();
 	connect(m_lineEdit_Filename->lineEdit(), &QLineEdit::textChanged, this, &AssetDialog::onChanged_LineEdit_Filename);
@@ -60,8 +61,10 @@ void AssetDialog::setValue(const AssetDescriptorPtr& value) {
 }
 
 void AssetDialog::onClicked_Filename_Browse() {
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"), ".", "");
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"), g_dialogPathCache, "");
 	if (!filename.isEmpty()) {
+		QFileInfo fileInfo(filename);
+		g_dialogPathCache = fileInfo.absolutePath();
 		m_lineEdit_Filename->setText(filename);
 	}
 }

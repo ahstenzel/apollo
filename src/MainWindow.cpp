@@ -88,10 +88,12 @@ void MainWindow::onMenu_File_OpenProject() {
 	}
 
 	// Open a new project
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open Project File"), ".", "*.arp");
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open Project File"), g_dialogPathCache, "*.arp");
 	if (filename.isEmpty()) {
 		return;
 	}
+	QFileInfo fileInfo(filename);
+	g_dialogPathCache = fileInfo.absolutePath();
 	if (!m_projectWidget_Main->load(filename)) {
 		QMessageBox::critical(this, "Error", QString("Failed to load project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
@@ -101,10 +103,12 @@ void MainWindow::onMenu_File_SaveProject() {
 	m_saveFlag = false;
 	QString filename = m_projectWidget_Main->projectFilename();
 	if (filename.isEmpty()) {
-		filename = QFileDialog::getSaveFileName(this, tr("Save Project File"), ".", "*.arp");
+		filename = QFileDialog::getSaveFileName(this, tr("Save Project File"), g_dialogPathCache, "*.arp");
 		if (filename.isEmpty()) {
 			return;
 		}
+		QFileInfo fileInfo(filename);
+		g_dialogPathCache = fileInfo.absolutePath();
 	}
 	if (!m_projectWidget_Main->save(filename)) {
 		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
@@ -114,10 +118,12 @@ void MainWindow::onMenu_File_SaveProject() {
 
 void MainWindow::onMenu_File_SaveAsProject() {
 	m_saveFlag = false;
-	QString filename = QFileDialog::getSaveFileName(this, tr("Save Project File As"), ".", "*.arp");
+	QString filename = QFileDialog::getSaveFileName(this, tr("Save Project File As"), g_dialogPathCache, "*.arp");
 	if (filename.isEmpty()) {
 		return;
 	}
+	QFileInfo fileInfo(filename);
+	g_dialogPathCache = fileInfo.absolutePath();
 	if (!m_projectWidget_Main->save(filename)) {
 		QMessageBox::critical(this, "Error", QString("Failed to save project file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
@@ -132,10 +138,12 @@ void MainWindow::onMenu_File_ExportProject() {
 	}
 
 	// Export project
-	QString filename = QFileDialog::getSaveFileName(this, tr("Export Resource File As"), ".", "*.arc");
+	QString filename = QFileDialog::getSaveFileName(this, tr("Export Resource File As"), g_dialogPathCache, "*.arc");
 	if (filename.isEmpty()) {
 		return;
 	}
+	QFileInfo fileInfo(filename);
+	g_dialogPathCache = fileInfo.absolutePath();
 	if (!m_projectWidget_Main->generate(filename)) {
 		QMessageBox::critical(this, "Error", QString("Failed to export resource file!\n\n%1").arg(m_projectWidget_Main->getErrorMessage()));
 	}
